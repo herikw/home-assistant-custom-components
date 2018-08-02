@@ -1,4 +1,4 @@
-# home-assistant-custom-components
+# Home-Assistant Custom Components
 Custom Components for Home-Assistant (http://www.home-assistant.io)
 
 ## ATAG One Thermostat
