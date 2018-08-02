@@ -7,7 +7,7 @@ It reads the Current Temperature, Set and Read the Operation mode (Auto, Manual,
 
 ### Installation
 * Copy file climate/atagone.py to your ha_config_dir/custom_components/climate directory.
-* If your are using docker: Copy file climate/atag-one.py to /usr/share/hassio/homeassistant/custom_components/climate
+* If your are using docker: Copy file climate/atagone.py to /usr/share/hassio/homeassistant/custom_components/climate
 * Configure with config below.
 * Restart Home-Assistant.
 
