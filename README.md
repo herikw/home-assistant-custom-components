@@ -20,11 +20,13 @@ It reads the Current Temperature, Set and Read the Operation mode (Auto, Manual,
 ### Usage
 To use this component in your installation, add the following to your configuration.yaml file:
 
-# Example configuration.yaml entry
+### Example configuration.yaml entry
 
+```
 climate:
   - platform: atagone
     name: Atag One Thermostat
-    host: IP_ADDRESS
+    host: 192.168.220.112
     port: 10000
     scan_interval: 10
+```
