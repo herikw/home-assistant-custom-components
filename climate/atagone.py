@@ -1,7 +1,8 @@
 """
 Adds Support for Atag One Thermostat
 
-Author: herikw
+Author: herikw 
+https://github.com/herikw/home-assistant-custom-components
 
 Configuration for this platform:
 
@@ -71,6 +72,20 @@ UPDATE_TEMP = '''{{
     }}
 }}'''
 
+PAIR_MESSAGE = '''{{
+    "pair_message":{{
+        "seqnr": 0,
+        "accounts":{{
+            "entries":[{{
+                "user_account": "",
+                "mac_address": {0},
+                "device_name": "Home Assistant",
+                "account_type": 0
+            }}]
+        }}
+    }}
+}}'''
+
 READ_PATH = '/retrieve'
 UPDATE_PATH = '/update' 
 PAIR_PATH = '/pair_message'
@@ -110,6 +125,7 @@ class AtagOneThermostat(ClimateDevice):
         self._current_operation = ''
         self._set_state = None
         self._operation_list = ['Manual', 'Auto', 'Holiday', 'Fireplace']
+        self._paired = false
 
         self.update()
 
@@ -129,6 +145,26 @@ class AtagOneThermostat(ClimateDevice):
             _LOGGER.error(ex.read())
 
         return resp
+
+    @staticmethod
+    def pair_atag(self):
+
+        if self._paired == False:
+            jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
+            resp = self.send_request(self, PAIR_PATH, jsonPayload)
+            status = self._data['acc_status']['acc_status']
+
+            if stats == 2:
+                self._paired = True
+            elif status == 1:
+                _LOGGER.info("Waiting for pairing confirmation")
+            elif status == 3:
+                _LOGGER.Error("Waiting for pairing confirmation")
+            elif status == 0:
+                _LOGGER.Error("No status returned from ATAG One")
+
+            self._paired = False
+
 
     @property
     def should_poll(self):
@@ -226,7 +262,8 @@ class AtagOneThermostat(ClimateDevice):
             self._current_temp = self._data['report']['room_temp']
             self._current_state = self._data['control']['ch_mode']
         else:
-            _LOGGER.error("Request Status: %s", status)
+            pair_atag()
+            _LOGGER.error("Please accept pairing request on Atag ONE Device")
 
 
     def set_temperature(self, **kwargs):
@@ -235,6 +272,7 @@ class AtagOneThermostat(ClimateDevice):
         if target_temp is None:
             return
         else:
+            # json payload need to be in exact order. Doesn't work with json.dumps
             jsonPayload = UPDATE_TEMP.format(MAC_ADDRESS, target_temp)
             resp = self.send_request(self, UPDATE_PATH, jsonPayload)
             self._data = resp['update_reply']
