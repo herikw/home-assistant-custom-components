@@ -3,6 +3,7 @@ Adds Support for Atag One Thermostat
 
 Author: herikw 
 https://github.com/herikw/home-assistant-custom-components
+changes: Added pairing functions
 
 Configuration for this platform:
 
