@@ -272,7 +272,6 @@ class AtagOneThermostat(ClimateDevice):
         if target_temp is None:
             return
         else:
-            # json payload need to be in exact order. Doesn't work with json.dumps
             jsonPayload = UPDATE_TEMP.format(MAC_ADDRESS, target_temp)
             resp = self.send_request(self, UPDATE_PATH, jsonPayload)
             self._data = resp['update_reply']
