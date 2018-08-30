@@ -153,9 +153,9 @@ class AtagOneThermostat(ClimateDevice):
         if self._paired == False:
             jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
             resp = self.send_request(self, PAIR_PATH, jsonPayload)
-            status = self._data['acc_status']['acc_status']
-
-            if stats == 2:
+            self._data = resp['pair_reply']                                                                                                                                                                       status = self._data['acc_status']
+            status = self._data['acc_status']
+            if status == 2:
                 self._paired = True
             elif status == 1:
                 _LOGGER.info("Waiting for pairing confirmation")
