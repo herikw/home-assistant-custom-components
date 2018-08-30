@@ -20,7 +20,7 @@ To use this component in your installation, add the following to your configurat
 climate:
   - platform: atagone
     name: Atag One Thermostat
-    host: 192.168.220.112
+    host: <ip address of ATAG One>
     port: 10000
     scan_interval: 10
 ```
