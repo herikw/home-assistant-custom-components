@@ -126,7 +126,7 @@ class AtagOneThermostat(ClimateDevice):
         self._current_operation = ''
         self._set_state = None
         self._operation_list = ['Manual', 'Auto', 'Holiday', 'Fireplace']
-        self._paired = false
+        self._paired = False
 
         self.update()
 
@@ -153,7 +153,7 @@ class AtagOneThermostat(ClimateDevice):
         if self._paired == False:
             jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
             resp = self.send_request(self, PAIR_PATH, jsonPayload)
-            self._data = resp['pair_reply']                                                                                                                                                                       status = self._data['acc_status']
+            self._data = resp['pair_reply']
             status = self._data['acc_status']
             if status == 2:
                 self._paired = True
