@@ -141,7 +141,7 @@ class AtagOneThermostat(ClimateDevice):
 
         try:
             with urllib.request.urlopen(req, timeout=30) as result:
-                resp = json.loads(result.read())
+                resp = json.loads(result.read().decode('utf-8'))
                 return resp
         except HTTPError as ex:
             _LOGGER.error('Atag ONE api error')
