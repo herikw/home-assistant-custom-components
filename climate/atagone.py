@@ -19,6 +19,7 @@ import logging
 import json
 import voluptuous as vol
 import urllib.request
+from urllib.error import HTTPError
 
 from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, SUPPORT_TARGET_TEMPERATURE, SUPPORT_OPERATION_MODE)
 from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_PORT, TEMP_CELSIUS, ATTR_TEMPERATURE)
@@ -141,11 +142,12 @@ class AtagOneThermostat(ClimateDevice):
         try:
             with urllib.request.urlopen(req, timeout=30) as result:
                 resp = json.loads(result.read())
+                return resp
         except HTTPError as ex:
             _LOGGER.error('Atag ONE api error')
             _LOGGER.error(ex.read())
 
-        return resp
+        return None
 
     @staticmethod
     def pair_atag(self):
