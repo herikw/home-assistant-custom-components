@@ -25,7 +25,7 @@ climate:
     scan_interval: 10
 ```
 
-![alt tag](/herikw/home-assistant-custom-components/blob/master/screenshots/climate.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/climate.png?raw=true "Screenshot")
 
 ## ATAG One Thermostat Sensor Component
 It reads the ATAG ONE thermostat report data and display these as sensors in HA
@@ -51,4 +51,4 @@ sensor:
 """
 ```
 
-![alt tag](/herikw/home-assistant-custom-components/blob/master/screenshots/sensor.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensor.png?raw=true "Screenshot")
