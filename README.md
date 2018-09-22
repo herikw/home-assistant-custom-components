@@ -1,7 +1,7 @@
 # Home-Assistant Custom Components
 Custom Components for Home-Assistant (http://www.home-assistant.io)
 
-## ATAG One Thermostat
+## ATAG One Thermostat Climate Component
 Component to interface with the API of the ATAG One thermostat on the local network.
 It reads the Current Temperature, Set and Read the Operation mode (Auto, Manual, Holiday, Fireplace) and Sets the target temperature.
 
@@ -23,4 +23,28 @@ climate:
     host: <ip address of ATAG One>
     port: 10000
     scan_interval: 10
+```
+
+## ATAG One Thermostat Sensor Component
+It reads the ATAG ONE thermostat report data and display these as sensors in HA
+
+### Installation
+* Copy file sensor/atag-one.py to your ha_config_dir/custom_components/sensor directory.
+* If your are using hasio on docker: Copy file sensor/atag-one.py to /usr/share/hassio/homeassistant/custom_components/sensor
+* Configure with config below.
+* Restart Home-Assistant.
+
+```
+sensor:
+  - platform: atagone
+    host: <ip address of ATAG One>
+    port: 10000
+    scan_interval: 10
+    resources:
+      - water_pressure
+      - burning_hours
+      - room_temp
+      - outside_temp
+      - water_temp
+"""
 ```

@@ -236,11 +236,11 @@ class AtagOneSensor(Entity):
                 self._state = float(status["outside_temp"])
 
         elif self.type == 'water_temp':
-            if 'water_temp' in status:
+            if 'ch_water_temp' in status:
                 self._state = float(status["ch_water_temp"])
 
         elif self.type == 'water_pressure':
-            if 'water_pressure' in status:
+            if 'ch_water_pres' in status:
                 self._state = float(status["ch_water_pres"])
 
         elif self.type == 'burning_hours':
