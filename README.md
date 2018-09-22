@@ -51,4 +51,4 @@ sensor:
 """
 ```
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensor.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensors.png?raw=true "Screenshot")
