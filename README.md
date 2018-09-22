@@ -48,7 +48,6 @@ sensor:
       - room_temp
       - outside_temp
       - water_temp
-"""
 ```
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensors.png?raw=true "Screenshot")
