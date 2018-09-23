@@ -36,6 +36,11 @@ It reads the ATAG ONE thermostat report data and display these as sensors in HA
 * Configure with config below.
 * Restart Home-Assistant.
 
+### Changes
+* added a couple of extra sensors. Replace the old sensor section with the below config
+
+Sensors can be added or removed by removing or adding the required entry(s)
+
 ```
 sensor:
   - platform: atagone
@@ -43,11 +48,18 @@ sensor:
     port: 10000
     scan_interval: 10
     resources:
-      - water_pressure
-      - burning_hours
       - room_temp
       - outside_temp
-      - water_temp
+      - avg_outside_temp
+      - pcb_temp
+      - ch_setpoint
+      - ch_water_pressure
+      - ch_water_temp
+      - ch_return_temp
+      - dhw_water_temp
+      - dhw_water_pres
+      - boiler_status
+      - boiler_config
 ```
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensors.png?raw=true "Screenshot")

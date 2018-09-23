@@ -3,7 +3,7 @@ Adds Support for Atag One Thermostat
 
 Author: herikw 
 https://github.com/herikw/home-assistant-custom-components
-changes: Added pairing functions
+Added other report fields
 
 Configuration for this platform:
 
@@ -13,11 +13,18 @@ sensor:
     port: 10000
     scan_interval: 10
     resources:
-      - water_pressure
-      - burning_hours
       - room_temp
       - outside_temp
-      - water_temp
+      - avg_outside_temp
+      - pcb_temp
+      - ch_setpoint
+      - ch_water_pressure
+      - ch_water_temp
+      - ch_return_temp
+      - dhw_water_temp
+      - dhw_water_pres
+      - boiler_status
+      - boiler_config
 """
 
 import logging
@@ -43,12 +50,26 @@ MAC_ADDRESS = '01:23:45:67:89:01'
 
 SENSOR_PREFIX = 'AtagOne '
 
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
+
 SENSOR_TYPES = {
     'room_temp': ['Room Temp', '°C', 'mdi:thermometer'],
     'outside_temp': ['Outside Temp', '°C', 'mdi:thermometer'],
-    'water_temp': ['Boiler Temp', '°C', 'mdi:thermometer'],
+    'avg_outside_temp': ['Average Outside Temp', '°C', 'mdi:thermometer'],
+    'pcb_temp': ['PCB Temp', '°C', 'mdi:thermometer'],
+    'ch_setpoint': ['Central Heating Setpoint', '°C', 'mdi:thermometer'],
+    'ch_water_pressure': ['Central Heating Water Pressure', 'Bar', 'mdi:gauge'],
+    'ch_water_temp': ['Central Heating Water Temp', '°C', 'mdi:thermometer'],
+    'ch_return_temp': ['Central Heating Return Temp', '°C', 'mdi:thermometer'],
+    'dhw_water_temp': ['Hot Water Temp', '°C', 'mdi:thermometer'],
+    'dhw_water_pres': ['Hot Water Pressure', 'Bar', 'mdi:gauge'],
+    'boiler_status': ['Boiler Status', '', 'mdi:flash'],
+    'boiler_config': ['Boiler Config', '', 'mdi:flash'],
     'water_pressure': ['Boiler Pressure', 'Bar', 'mdi:gauge'],
     'burning_hours': ['Burning Hours', 'h', 'mdi:fire'],
+    'voltage': ['Voltage', 'V', 'mdi:flash'],
+    'current': ['Current', 'mA', 'mdi:flash-auto'],
+
 }
 
 PAIR_MESSAGE = '''{{
@@ -235,15 +256,63 @@ class AtagOneSensor(Entity):
             if 'outside_temp' in status:
                 self._state = float(status["outside_temp"])
 
-        elif self.type == 'water_temp':
+        elif self.type == 'avg_outside_temp':
+            if 'dbg_outside_temp' in status:
+                self._state = float(status["dbg_outside_temp"])
+        
+        elif self.type == 'pcb_temp':
+            if 'pcb_temp' in status:
+                self._state = float(status["pcb_temp"])
+
+        elif self.type == 'ch_setpoint':
+            if 'ch_setpoint' in status:
+                self._state = float(status["ch_setpoint"])
+
+        elif self.type == 'ch_water_pressure':
+            if 'ch_water_pres' in status:
+                self._state = float(status["ch_water_pres"])
+
+        elif self.type == 'ch_water_temp':
             if 'ch_water_temp' in status:
                 self._state = float(status["ch_water_temp"])
 
-        elif self.type == 'water_pressure':
-            if 'ch_water_pres' in status:
-                self._state = float(status["ch_water_pres"])
+        elif self.type == 'ch_return_temp':
+            if 'ch_return_temp' in status:
+                self._state = float(status["ch_return_temp"])
+        
+        elif self.type == 'dhw_water_temp':
+            if 'dhw_water_temp' in status:
+                self._state = float(status["dhw_water_temp"])
+
+        elif self.type == 'dhw_water_pres':
+            if 'dhw_water_pres' in status:
+                self._state = float(status["dhw_water_pres"])
+
+        elif self.type == 'boiler_status':
+            if 'boiler_status' in status:
+                s = float(status["boiler_status"])
+                if s & 8 == 8:
+                    self._unit = 'Boiler'
+                elif s & 2 == 2:
+                    self._unit = 'Central'
+                elif s & 4 == 4:
+                    self._unit = 'Water'
+                else:
+                    self._unit = 'Idle'
+
+        elif self.type == 'boiler_config':
+            if 'boiler_config' in status:
+                self._state = float(status["boiler_config"])
 
         elif self.type == 'burning_hours':
             if 'burning_hours' in status:
                 self._state = float(status["burning_hours"])
+
+        elif self.type == 'voltage':
+            if 'voltage' in status:
+                self._state = float(status["voltage"])
+
+        elif self.type == 'current':
+            if 'current' in status:
+                self._state = float(status["current"])
                 
