@@ -290,7 +290,7 @@ class AtagOneSensor(Entity):
 
         elif self.type == 'boiler_status':
             if 'boiler_status' in status:
-                s = float(status["boiler_status"])
+                s = int(status["boiler_status"])
                 if s & 8 == 8:
                     self._unit = 'Boiler'
                 elif s & 2 == 2:
