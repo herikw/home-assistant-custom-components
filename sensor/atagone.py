@@ -25,6 +25,10 @@ sensor:
       - dhw_water_pres
       - boiler_status
       - boiler_config
+      - water_pressure
+      - burning_hours
+      - voltage
+      - current
 """
 
 import logging
