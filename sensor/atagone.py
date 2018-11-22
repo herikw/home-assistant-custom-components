@@ -25,10 +25,10 @@ sensor:
       - dhw_water_pres
       - boiler_status
       - boiler_config
-      - water_pressure
       - burning_hours
       - voltage
       - current
+      - rel_mod_level
 """
 
 import logging
@@ -69,11 +69,10 @@ SENSOR_TYPES = {
     'dhw_water_pres': ['Hot Water Pressure', 'Bar', 'mdi:gauge'],
     'boiler_status': ['Boiler Status', '', 'mdi:flash'],
     'boiler_config': ['Boiler Config', '', 'mdi:flash'],
-    'water_pressure': ['Boiler Pressure', 'Bar', 'mdi:gauge'],
     'burning_hours': ['Burning Hours', 'h', 'mdi:fire'],
     'voltage': ['Voltage', 'V', 'mdi:flash'],
     'current': ['Current', 'mA', 'mdi:flash-auto'],
-
+    'rel_mod_level': ['Burner', '%', 'mdi:fire'],
 }
 
 PAIR_MESSAGE = '''{{
@@ -251,6 +250,7 @@ class AtagOneSensor(Entity):
         """Get the latest data and use it to update our sensor state."""
         self.data.update()
         status = self.data.data
+        details = status["details"]
 
         if self.type == 'room_temp':
             if 'room_temp' in status:
@@ -297,13 +297,24 @@ class AtagOneSensor(Entity):
                 s = int(status["boiler_status"])
                 if s & 8 == 8:
                     self._unit = 'Boiler'
+                    self._icon = 'mdi:fire'
                 elif s & 2 == 2:
                     self._unit = 'Central'
+                    self._icon = 'mdi:fire'
                 elif s & 4 == 4:
                     self._unit = 'Water'
+                    self._icon = 'mdi:fire'
                 else:
                     self._unit = 'Idle'
-
+                    self._icon = SENSOR_TYPES[self.type][2]
+                    
+        elif self.type == 'rel_mod_level':
+            if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
+                if int(status["boiler_status"]) > 0:
+                    self._state = int(details["min_mod_level"]) + int(details["rel_mod_level"])
+                else:
+                    self._state = 0
+               
         elif self.type == 'boiler_config':
             if 'boiler_config' in status:
                 self._state = float(status["boiler_config"])
