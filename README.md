@@ -60,6 +60,10 @@ sensor:
       - dhw_water_pres
       - boiler_status
       - boiler_config
+      - burning_hours
+      - voltage
+      - current
+      - rel_mod_level
 ```
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensors.png?raw=true "Screenshot")
