@@ -261,8 +261,8 @@ class AtagOneSensor(Entity):
                 self._state = float(status["outside_temp"])
 
         elif self.type == 'avg_outside_temp':
-            if 'dbg_outside_temp' in status:
-                self._state = float(status["dbg_outside_temp"])
+            if 'tout_avg' in status:
+                self._state = float(status["tout_avg"])
         
         elif self.type == 'pcb_temp':
             if 'pcb_temp' in status:
@@ -295,23 +295,26 @@ class AtagOneSensor(Entity):
         elif self.type == 'boiler_status':
             if 'boiler_status' in status:
                 s = int(status["boiler_status"])
-                if s & 8 == 8:
+                self._state = s & 14
+                if self._state == 8:
                     self._unit = 'Boiler'
                     self._icon = 'mdi:fire'
-                elif s & 2 == 2:
+                elif self._state == 10:
                     self._unit = 'Central'
                     self._icon = 'mdi:fire'
-                elif s & 4 == 4:
+                elif s & 14 == 12:
                     self._unit = 'Water'
                     self._icon = 'mdi:fire'
                 else:
                     self._unit = 'Idle'
                     self._icon = SENSOR_TYPES[self.type][2]
-                    
+
         elif self.type == 'rel_mod_level':
             if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
                 if int(status["boiler_status"]) > 0:
-                    self._state = int(details["min_mod_level"]) + int(details["rel_mod_level"])
+                    mml = int(details["min_mod_level"])
+                    rml = int(details["rel_mod_level"])
+                    self._state = (mml + (1 - mml)) * rml
                 else:
                     self._state = 0
                
