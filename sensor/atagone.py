@@ -52,7 +52,7 @@ DEFAULT_TIMEOUT = 30
 BASE_URL = 'http://{0}:{1}{2}'
 MAC_ADDRESS = '01:23:45:67:89:01'
 
-SENSOR_PREFIX = 'AtagOne '
+SENSOR_PREFIX = 'Atag One '
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
 
