@@ -3,7 +3,6 @@ Adds Support for Atag One Thermostat
 
 Author: herikw 
 https://github.com/herikw/home-assistant-custom-components
-changes: Added pairing functions
 
 Configuration for this platform:
 
@@ -21,7 +20,12 @@ import voluptuous as vol
 import urllib.request
 from urllib.error import HTTPError
 
-from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA, SUPPORT_TARGET_TEMPERATURE, SUPPORT_OPERATION_MODE)
+from homeassistant.components.climate import (ClimateDevice, PLATFORM_SCHEMA)
+from homeassistant.components.climate.const import ( STATE_COOL, STATE_ECO,
+                                                     STATE_HEAT, STATE_AUTO,
+                                                     SUPPORT_OPERATION_MODE,
+                                                     SUPPORT_TARGET_TEMPERATURE, STATE_MANUAL)
+
 from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_PORT, TEMP_CELSIUS, ATTR_TEMPERATURE)
 import homeassistant.helpers.config_validation as config_validation
 
@@ -105,10 +109,12 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
 })
 
+
 # pylint: disable=unused-argument
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Setup for the Atag One thermostat."""
     add_devices([AtagOneThermostat(config.get(CONF_NAME), config.get(CONF_HOST), config.get(CONF_PORT))])
+
 
 # pylint: disable=abstract-method
 # pylint: disable=too-many-instance-attributes
@@ -265,12 +271,12 @@ class AtagOneThermostat(ClimateDevice):
             self._current_temp = self._data['report']['room_temp']
             self._current_state = self._data['control']['ch_mode']
         else:
-            pair_atag()
+            self.pair_atag()
             _LOGGER.error("Please accept pairing request on Atag ONE Device")
-
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
+
         target_temp = kwargs.get(ATTR_TEMPERATURE)
         if target_temp is None:
             return

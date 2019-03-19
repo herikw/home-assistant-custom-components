@@ -6,8 +6,9 @@ Component to interface with the API of the ATAG One thermostat on the local netw
 It reads the Current Temperature, Set and Read the Operation mode (Auto, Manual, Holiday, Fireplace) and Sets the target temperature.
 
 ### Installation
-* Copy file climate/atag-one.py to your ha_config_dir/custom_components/climate directory.
-* If your are using hasio on docker: Copy file climate/atag-one.py to /usr/share/hassio/homeassistant/custom_components/climate
+* If not exist, in ha_config_dir/custom_components/ create a directory called atagone 
+* Copy file atagone/climate.py to your ha_config_dir/custom_components/atagone/ directory.
+* If your are using hasio on docker: Copy file atagone/climate.py to /usr/share/hassio/homeassistant/custom_components/atagone/
 * Configure with config below.
 * Restart Home-Assistant.
 
@@ -31,8 +32,9 @@ climate:
 It reads the ATAG ONE thermostat report data and display these as sensors in HA
 
 ### Installation
-* Copy file sensor/atag-one.py to your ha_config_dir/custom_components/sensor directory.
-* If your are using hasio on docker: Copy file sensor/atag-one.py to /usr/share/hassio/homeassistant/custom_components/sensor
+* If not exist, in ha_config_dir/custom_components/ create a directory called atagone 
+* Copy file atagone/sensor.py to your ha_config_dir/custom_components/atagone/ directory.
+* If your are using hasio on docker: Copy file atagone/sensor.py to /usr/share/hassio/homeassistant/custom_components/atagone/
 * Configure with config below.
 * Restart Home-Assistant.
 
