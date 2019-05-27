@@ -1,0 +1,8 @@
+{
+  "domain": "your_domain_name",
+  "name": "ATAG One",
+  "documentation": "https://github.com/herikw/home-assistant-custom-components",
+  "dependencies": [],
+  "codeowners": [],
+  "requirements": []
+}
