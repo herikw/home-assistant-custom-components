@@ -33,8 +33,8 @@ It reads the ATAG ONE thermostat report data and display these as sensors in HA
 
 ### Installation
 * If not exist, in ha_config_dir/custom_components/ create a directory called atagone 
-* Copy file atagone/sensor.py to your ha_config_dir/custom_components/atagone/ directory.
-* If your are using hasio on docker: Copy file atagone/sensor.py to /usr/share/hassio/homeassistant/custom_components/atagone/
+* Copy all files in atagone to your ha_config_dir/custom_components/atagone/ directory.
+* If your are using hasio on docker: Copy all files in atagone to /usr/share/hassio/homeassistant/custom_components/atagone/
 * Configure with config below.
 * Restart Home-Assistant.
 
