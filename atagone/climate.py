@@ -197,7 +197,6 @@ class AtagOneThermostat(ClimateDevice):
             self._current_temp = self._data['report']['room_temp']
             self._current_state = self._data['control']['ch_mode']
             boiler_status = int(self._data['report']['boiler_status']) & 14
-            _LOGGER.debug("boiler status: %s", boiler_status)
             if boiler_status == 2:
                self._heating = True
             else:
