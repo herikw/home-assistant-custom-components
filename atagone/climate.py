@@ -23,7 +23,10 @@ from typing import Optional, List
 import requests
 
 from homeassistant.components.climate import ClimateDevice, PLATFORM_SCHEMA
-from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE, HVAC_MODE_HEAT, CURRENT_HVAC_HEAT, CURRENT_HVAC_IDLE)
+from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE,
+                                                    HVAC_MODE_HEAT, HVAC_MODE_OFF, CURRENT_HVAC_HEAT,
+                                                    CURRENT_HVAC_IDLE, SUPPORT_PRESET_MODE,
+                                                    PRESET_AWAY, PRESET_ECO, PRESET_HOME)
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_NAME, TEMP_CELSIUS, ATTR_TEMPERATURE
 import homeassistant.helpers.config_validation as config_validation
 
@@ -43,6 +46,13 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Required(CONF_HOST): config_validation.string,
     vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
 })
+
+HA_PRESET_TO_ATAG = {
+    PRESET_AWAY: 3,
+    PRESET_ECO: 2,
+    PRESET_HOME: 1
+}
+ATAG_PRESET_TO_HA = {v: k for k, v in HA_PRESET_TO_ATAG.items()}
 
 # jsonPayload data templates
 # update payload need to be in exact order. So, using string instead of json.dumps
@@ -117,6 +127,7 @@ class AtagOneThermostat(ClimateDevice):
         """Initialize"""
         self._data = None
         self._name = name
+        self._icon = 'mdi:radiator'
         self._host = host
         self._port = port
 
@@ -126,6 +137,7 @@ class AtagOneThermostat(ClimateDevice):
         self._current_setpoint = None
         self._paired = False
         self._heating = False
+        self._preset = None
         self._current_state = -1
         self._current_operation = ''
 
@@ -195,12 +207,15 @@ class AtagOneThermostat(ClimateDevice):
         if status == 2:
             self._current_setpoint = self._data['report']['shown_set_temp']
             self._current_temp = self._data['report']['room_temp']
-            self._current_state = self._data['control']['ch_mode']
+            atag_preset = self._data['control']['ch_mode']
+            self._preset = ATAG_PRESET_TO_HA.get(atag_preset)
+            _LOGGER.debug("Preset: %s", self._preset)
+
             boiler_status = int(self._data['report']['boiler_status']) & 14
             if boiler_status == 2:
-               self._heating = True
+                self._heating = True
             else:
-               self._heating = False
+                self._heating = False
         else:
             self.pair_atag()
             _LOGGER.error("Please accept pairing request on Atag ONE Device")
@@ -208,7 +223,9 @@ class AtagOneThermostat(ClimateDevice):
     @property
     def hvac_mode(self) -> str:
         """Return hvac operation """
-        return HVAC_MODE_HEAT
+        if self._heating:
+            return HVAC_MODE_HEAT
+        return HVAC_MODE_OFF
 
     @property
     def hvac_modes(self) -> List[str]:
@@ -262,6 +279,30 @@ class AtagOneThermostat(ClimateDevice):
     def target_temperature(self):
         """Return the temperature we try to reach."""
         return self._current_setpoint
+
+    @property
+    def preset_mode(self) -> Optional[str]:
+        """Return the current preset mode, e.g., home, away, temp."""
+        if self._preset is not None:
+            return self._preset.lower()
+        return None
+
+    @property
+    def preset_modes(self):
+        """Return a list of available preset modes."""
+        return [PRESET_HOME, PRESET_AWAY, PRESET_ECO]
+
+    def set_preset_mode(self, preset_mode: Optional[str]) -> None:
+        """Set a new preset mode. If preset_mode is None, then revert to auto."""
+        self._atag_preset = HA_PRESET_TO_ATAG.get(preset_mode, PRESET_HOME)
+
+        jsonPayload = UPDATE_MODE.format(MAC_ADDRESS, self._atag_preset)
+        resp = self.send_request(self, UPDATE_PATH, jsonPayload)
+        self._data = resp['update_reply']
+        status = self._data['acc_status']
+
+        if status != 2:
+            _LOGGER.error("Request Status: %s", status)
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
