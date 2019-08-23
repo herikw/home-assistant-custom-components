@@ -105,15 +105,9 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Setup the Atag One sensors."""
-    scan_interval = config.get(CONF_SCAN_INTERVAL)
     host = config.get(CONF_HOST)
     port = config.get(CONF_PORT)
-
-    try:
-        data = AtagOneData(host, port)
-    except requests.exceptions.HTTPError as error:
-        _LOGGER.error(error)
-        return False
+    data = AtagOneData(host, port)
 
     entities = []
 
@@ -156,15 +150,17 @@ class AtagOneData(Entity):
         })
 
         resp = self.send_request(self, READ_PATH, jsonPayload)
-        reply = resp['retrieve_reply']
-        _LOGGER.debug("Data = %s", reply)
 
-        status = reply['acc_status']
-        if status == 2:
-            self.data = reply['report']
-        else:
-            pair_atag()
-            _LOGGER.error("Please accept pairing request on Atag ONE Device")
+        if resp != None:
+            reply = resp['retrieve_reply']
+            _LOGGER.debug("Data = %s", reply)
+
+            status = reply['acc_status']
+            if status == 2:
+                self.data = reply['report']
+            else:
+                self.pair_atag(self)
+                _LOGGER.error("Please accept pairing request on Atag ONE Device")
 
     @staticmethod
     def send_request(self, requestPath, jsonPayload):
@@ -173,15 +169,13 @@ class AtagOneData(Entity):
             self._port,
             requestPath),
             data=str.encode(jsonPayload))
+
         try:
             with urllib.request.urlopen(req, timeout=30) as result:
                 resp = json.loads(result.read().decode('utf-8'))
                 return resp
-        except HTTPError as ex:
-            _LOGGER.error('Atag ONE api error')
-            _LOGGER.error(ex.read())
-
-        return None
+        except Exception:        
+            return None
 
     @staticmethod
     def pair_atag(self):
@@ -189,19 +183,21 @@ class AtagOneData(Entity):
         if self._paired == False:
             jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
             resp = self.send_request(self, PAIR_PATH, jsonPayload)
-            reply = resp['pair_reply']
-            _LOGGER.debug("Data = %s", reply)
 
-            status = reply['acc_status']
-            if status == 2:
-                self._paired = True
-                return
-            elif status == 1:
-                _LOGGER.info("Waiting for pairing confirmation")
-            elif status == 3:
-                _LOGGER.Error("Waiting for pairing confirmation")
-            elif status == 0:
-                _LOGGER.Error("No status returned from ATAG One")
+            if resp != None:
+                reply = resp['pair_reply']
+                _LOGGER.debug("Data = %s", reply)
+
+                status = reply['acc_status']
+                if status == 2:
+                    self._paired = True
+                    return
+                elif status == 1:
+                    _LOGGER.info("Waiting for pairing confirmation")
+                elif status == 3:
+                    _LOGGER.Error("Waiting for pairing confirmation")
+                elif status == 0:
+                    _LOGGER.Error("No status returned from ATAG One")
 
             self._paired = False
  
@@ -250,87 +246,91 @@ class AtagOneSensor(Entity):
         """Get the latest data and use it to update our sensor state."""
         self.data.update()
         status = self.data.data
-        details = status["details"]
 
-        if self.type == 'room_temp':
-            if 'room_temp' in status:
-                self._state = float(status["room_temp"])
+        if status != None:
+            details = status["details"]
 
-        elif self.type == 'outside_temp':
-            if 'outside_temp' in status:
-                self._state = float(status["outside_temp"])
+            if self.type == 'room_temp':
+                if 'room_temp' in status:
+                    self._state = float(status["room_temp"])
 
-        elif self.type == 'avg_outside_temp':
-            if 'tout_avg' in status:
-                self._state = float(status["tout_avg"])
-        
-        elif self.type == 'pcb_temp':
-            if 'pcb_temp' in status:
-                self._state = float(status["pcb_temp"])
+            elif self.type == 'outside_temp':
+                if 'outside_temp' in status:
+                    self._state = float(status["outside_temp"])
 
-        elif self.type == 'ch_setpoint':
-            if 'ch_setpoint' in status:
-                self._state = float(status["ch_setpoint"])
+            elif self.type == 'avg_outside_temp':
+                if 'tout_avg' in status:
+                    self._state = float(status["tout_avg"])
 
-        elif self.type == 'ch_water_pressure':
-            if 'ch_water_pres' in status:
-                self._state = float(status["ch_water_pres"])
+            elif self.type == 'pcb_temp':
+                if 'pcb_temp' in status:
+                    self._state = float(status["pcb_temp"])
 
-        elif self.type == 'ch_water_temp':
-            if 'ch_water_temp' in status:
-                self._state = float(status["ch_water_temp"])
+            elif self.type == 'ch_setpoint':
+                if 'ch_setpoint' in status:
+                    self._state = float(status["ch_setpoint"])
 
-        elif self.type == 'ch_return_temp':
-            if 'ch_return_temp' in status:
-                self._state = float(status["ch_return_temp"])
-        
-        elif self.type == 'dhw_water_temp':
-            if 'dhw_water_temp' in status:
-                self._state = float(status["dhw_water_temp"])
+            elif self.type == 'ch_water_pressure':
+                if 'ch_water_pres' in status:
+                    self._state = float(status["ch_water_pres"])
 
-        elif self.type == 'dhw_water_pres':
-            if 'dhw_water_pres' in status:
-                self._state = float(status["dhw_water_pres"])
+            elif self.type == 'ch_water_temp':
+                if 'ch_water_temp' in status:
+                    self._state = float(status["ch_water_temp"])
 
-        elif self.type == 'boiler_status':
-            if 'boiler_status' in status:
-                s = int(status["boiler_status"])
-                self._state = s & 14
-                if self._state == 8:
-                    self._unit = 'Boiler'
-                    self._icon = 'mdi:fire'
-                elif self._state == 10:
-                    self._unit = 'Central'
-                    self._icon = 'mdi:fire'
-                elif s & 14 == 12:
-                    self._unit = 'Water'
-                    self._icon = 'mdi:fire'
-                else:
-                    self._unit = 'Idle'
-                    self._icon = SENSOR_TYPES[self.type][2]
+            elif self.type == 'ch_return_temp':
+                if 'ch_return_temp' in status:
+                    self._state = float(status["ch_return_temp"])
 
-        elif self.type == 'rel_mod_level':
-            if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
-                if int(status["boiler_status"]) > 0:
-                    mml = int(details["min_mod_level"])
-                    rml = int(details["rel_mod_level"])
-                    self._state = (mml + (1 - mml)) * rml
-                else:
-                    self._state = 0
-               
-        elif self.type == 'boiler_config':
-            if 'boiler_config' in status:
-                self._state = float(status["boiler_config"])
+            elif self.type == 'dhw_water_temp':
+                if 'dhw_water_temp' in status:
+                    self._state = float(status["dhw_water_temp"])
 
-        elif self.type == 'burning_hours':
-            if 'burning_hours' in status:
-                self._state = float(status["burning_hours"])
+            elif self.type == 'dhw_water_pres':
+                if 'dhw_water_pres' in status:
+                    self._state = float(status["dhw_water_pres"])
 
-        elif self.type == 'voltage':
-            if 'voltage' in status:
-                self._state = float(status["voltage"])
+            elif self.type == 'boiler_status':
+                if 'boiler_status' in status:
+                    s = int(status["boiler_status"])
+                    self._state = s & 14
+                    if self._state == 8:
+                        self._unit = 'Boiler'
+                        self._icon = 'mdi:fire'
+                    elif self._state == 10:
+                        self._unit = 'Central'
+                        self._icon = 'mdi:fire'
+                    elif s & 14 == 12:
+                        self._unit = 'Water'
+                        self._icon = 'mdi:fire'
+                    else:
+                        self._unit = 'Idle'
+                        self._icon = SENSOR_TYPES[self.type][2]
 
-        elif self.type == 'current':
-            if 'current' in status:
-                self._state = float(status["current"])
+            elif self.type == 'rel_mod_level':
+                if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
+                    if int(status["boiler_status"]) > 0:
+                        mml = int(details["min_mod_level"])
+                        rml = int(details["rel_mod_level"])
+                        self._state = (mml + (1 - mml)) * rml
+                    else:
+                        self._state = 0
+
+            elif self.type == 'boiler_config':
+                if 'boiler_config' in status:
+                    self._state = float(status["boiler_config"])
+
+            elif self.type == 'burning_hours':
+                if 'burning_hours' in status:
+                    self._state = float(status["burning_hours"])
+
+            elif self.type == 'voltage':
+                if 'voltage' in status:
+                    self._state = float(status["voltage"])
+
+            elif self.type == 'current':
+                if 'current' in status:
+                    self._state = float(status["current"])
+        else:
+            _LOGGER.error("Could not update Atag ONE sensor '" + self.type + "'")
                 

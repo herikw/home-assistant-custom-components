@@ -160,11 +160,9 @@ class AtagOneThermostat(ClimateDevice):
             with urllib.request.urlopen(req, timeout=30) as result:
                 resp = json.loads(result.read().decode('utf-8'))
                 return resp
-        except HTTPError as ex:
-            _LOGGER.error('Atag ONE api error')
-            _LOGGER.error(ex.read())
-
-        return None
+        except Exception as ex:
+            _LOGGER.error('Atag ONE Api Error: ' + str(ex))
+            return None
 
     @staticmethod
     def pair_atag(self):
@@ -172,16 +170,18 @@ class AtagOneThermostat(ClimateDevice):
         if self._paired == False:
             jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
             resp = self.send_request(self, PAIR_PATH, jsonPayload)
-            self._data = resp['pair_reply']
-            status = self._data['acc_status']
-            if status == 2:
-                self._paired = True
-            elif status == 1:
-                _LOGGER.info("Waiting for pairing confirmation")
-            elif status == 3:
-                _LOGGER.Error("Waiting for pairing confirmation")
-            elif status == 0:
-                _LOGGER.Error("No status returned from ATAG One")
+
+            if resp != None:
+                self._data = resp['pair_reply']
+                status = self._data['acc_status']
+                if status == 2:
+                    self._paired = True
+                elif status == 1:
+                    _LOGGER.info("Waiting for pairing confirmation")
+                elif status == 3:
+                    _LOGGER.Error("Waiting for pairing confirmation")
+                elif status == 0:
+                    _LOGGER.Error("No status returned from ATAG One")
 
             self._paired = False
 
@@ -201,24 +201,26 @@ class AtagOneThermostat(ClimateDevice):
         })
 
         resp = self.send_request(self, READ_PATH, jsonPayload)
-        self._data = resp['retrieve_reply']
-        status = self._data['acc_status']
 
-        if status == 2:
-            self._current_setpoint = self._data['report']['shown_set_temp']
-            self._current_temp = self._data['report']['room_temp']
-            atag_preset = self._data['control']['ch_mode']
-            self._preset = ATAG_PRESET_TO_HA.get(atag_preset)
-            _LOGGER.debug("Preset: %s", self._preset)
-
-            boiler_status = int(self._data['report']['boiler_status']) & 14
-            if boiler_status == 2:
-                self._heating = True
+        if resp != None:
+            self._data = resp['retrieve_reply']
+            status = self._data['acc_status']
+	
+            if status == 2:
+                self._current_setpoint = self._data['report']['shown_set_temp']
+                self._current_temp = self._data['report']['room_temp']
+                atag_preset = self._data['control']['ch_mode']
+                self._preset = ATAG_PRESET_TO_HA.get(atag_preset)
+                _LOGGER.debug("Preset: %s", self._preset)
+	
+                boiler_status = int(self._data['report']['boiler_status']) & 14
+                if boiler_status == 2:
+                    self._heating = True
+                else:
+                    self._heating = False
             else:
-                self._heating = False
-        else:
-            self.pair_atag()
-            _LOGGER.error("Please accept pairing request on Atag ONE Device")
+                self.pair_atag(self)
+                _LOGGER.error("Please accept pairing request on Atag ONE Device")
 
     @property
     def hvac_mode(self) -> str:
@@ -298,11 +300,13 @@ class AtagOneThermostat(ClimateDevice):
 
         jsonPayload = UPDATE_MODE.format(MAC_ADDRESS, self._atag_preset)
         resp = self.send_request(self, UPDATE_PATH, jsonPayload)
-        self._data = resp['update_reply']
-        status = self._data['acc_status']
 
-        if status != 2:
-            _LOGGER.error("Request Status: %s", status)
+        if resp != None:
+            self._data = resp['update_reply']
+            status = self._data['acc_status']
+    
+            if status != 2:
+                _LOGGER.error("Request Status: %s", status)
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -313,8 +317,10 @@ class AtagOneThermostat(ClimateDevice):
         else:
             jsonPayload = UPDATE_TEMP.format(MAC_ADDRESS, target_temp)
             resp = self.send_request(self, UPDATE_PATH, jsonPayload)
-            self._data = resp['update_reply']
-            status = self._data['acc_status']
 
-            if status != 2:
-                _LOGGER.error("Request Status: %s", status)
+            if resp != None:
+                self._data = resp['update_reply']
+                status = self._data['acc_status']
+
+                if status != 2:
+                    _LOGGER.error("Request Status: %s", status)
