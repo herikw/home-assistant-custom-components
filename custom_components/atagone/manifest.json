@@ -1,8 +1,8 @@
 {
   "domain": "atagone",
-  "name": "ATAG One",
+  "name": "ATAG One Component",
   "documentation": "https://github.com/herikw/home-assistant-custom-components",
   "dependencies": [],
-  "codeowners": [],
+  "codeowners": ["@herikw"],
   "requirements": []
 }

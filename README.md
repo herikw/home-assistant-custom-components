@@ -1,4 +1,5 @@
 # Home-Assistant Custom Components
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
 Custom Components for Home-Assistant (http://www.home-assistant.io)
 
 ## ATAG One Thermostat Climate Component
