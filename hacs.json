@@ -1,6 +1,6 @@
  {
   "name": "ATAG One",
   "country": "NL",
-  "render_readme": true,
+  "render_readme": false,
   "domains": ["sensor","climate"]
 }
