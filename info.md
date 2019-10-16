@@ -1,4 +1,5 @@
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs) [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs) [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![Open Source Love](https://badges.frapsoft.com/os/v1/open-source.svg?v=103)](https://github.com/ellerbrock/open-source-badges/)
+
 # Home-Assistant Custom Components
 Custom Components for Home-Assistant (http://www.home-assistant.io)
 
@@ -6,12 +7,20 @@ Custom Components for Home-Assistant (http://www.home-assistant.io)
 Component to interface with the API of the ATAG One thermostat on the local network.
 It reads the Current Temperature, Set and Read the Operation mode (Auto, Manual, Holiday, Fireplace) and Sets the target temperature.
 
+{% if not installed %}
+### Installation
+
+1. Click install.
+1. Add `ATAG One:` to your HA configuration  
+
+{% endif %}
+
 ### Usage
 To use this component in your installation, add the following to your configuration.yaml file:
 
 ### Example configuration.yaml entry
 
-```
+```yaml
 climate:
   - platform: atagone
     name: Atag One Thermostat
@@ -27,7 +36,7 @@ It reads the ATAG ONE thermostat report data and display these as sensors in HA
 
 Sensors can be added or removed by removing or adding the required entry(s)
 
-```
+```yaml
 sensor:
   - platform: atagone
     host: <ip address of ATAG One>
