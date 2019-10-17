@@ -5,7 +5,7 @@ Custom Components for Home-Assistant (http://www.home-assistant.io)
 
 ## ATAG One Thermostat Climate Component
 Component to interface with the API of the ATAG One thermostat on the local network.
-It reads the Current Temperature, Set and Read the Operation mode (Auto, Manual, Holiday, Fireplace) and Sets the target temperature.
+It reads the Current Temperature and other parameters like central heating water pressure and outside temperature. It currently only supports Heating as operation mode.
 
 {% if not installed %}
 ### Installation
