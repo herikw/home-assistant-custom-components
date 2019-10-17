@@ -26,7 +26,7 @@ climate:
     name: Atag One Thermostat
     host: ip address of ATAG One
     port: 10000
-    scan_interval: 10
+    scan_interval: 20
 ```
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/climate.png?raw=true "Screenshot")
@@ -41,7 +41,7 @@ sensor:
   - platform: atagone
     host: ip address of ATAG One
     port: 10000
-    scan_interval: 10
+    scan_interval: 20
     resources:
       - room_temp
       - outside_temp
