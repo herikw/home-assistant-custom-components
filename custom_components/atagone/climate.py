@@ -212,7 +212,7 @@ class AtagOneThermostat(ClimateDevice):
             _LOGGER.debug("Preset: %s", self._preset)
 
             boiler_status = int(self._data['report']['boiler_status']) & 14
-            if boiler_status == 2:
+            if boiler_status == 10:
                 self._heating = True
             else:
                 self._heating = False
