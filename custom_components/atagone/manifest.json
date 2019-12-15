@@ -3,6 +3,6 @@
   "name": "ATAG One",
   "documentation": "https://github.com/herikw/home-assistant-custom-components",
   "dependencies": [],
-  "codeowners": [],
+  "codeowners": ["@herikw"],
   "requirements": []
 }
