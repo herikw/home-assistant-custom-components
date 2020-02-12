@@ -9,7 +9,7 @@ Configuration for this platform:
 
 sensor:
   - platform: atagone
-    host: IP_ADDRESS
+    [host: IP_ADDRESS]
     port: 10000
     scan_interval: 10
     resources:
@@ -114,6 +114,10 @@ def find_ip():
             return str(addr[0])
        except HTTPError as ex:
          _LOGGER.error('Atag ONE not found')
+          
+    s.close(self)
+    return None
+    
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Setup the Atag One sensors."""
