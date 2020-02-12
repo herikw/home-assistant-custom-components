@@ -167,8 +167,8 @@ class AtagOneThermostat(ClimateDevice):
            except HTTPError as ex:
              _LOGGER.error('Atag ONE not found')
               
-         s.close(self)
-         return None
+        s.close(self)
+        return None
 
     @staticmethod
     def send_request(self, requestPath, jsonPayload):
