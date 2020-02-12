@@ -357,3 +357,4 @@ class AtagOneSensor(Entity):
             elif self.type == 'current':
                 if 'current' in status:
                     self._state = float(status["current"])
+              
