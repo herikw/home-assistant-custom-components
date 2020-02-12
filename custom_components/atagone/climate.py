@@ -21,6 +21,7 @@ import urllib.request
 from urllib.error import HTTPError
 from typing import Optional, List
 import requests
+from socket import *
 
 from homeassistant.components.climate import ClimateDevice, PLATFORM_SCHEMA
 from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE,
@@ -43,7 +44,7 @@ SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     vol.Optional(CONF_NAME, default=DEFAULT_NAME): config_validation.string,
-    vol.Required(CONF_HOST): config_validation.string,
+    vol.Optional(CONF_HOST): config_validation.string,
     vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
 })
 
@@ -128,7 +129,6 @@ class AtagOneThermostat(ClimateDevice):
         self._data = None
         self._name = name
         self._icon = 'mdi:radiator'
-        self._host = host
         self._port = port
 
         self._min_temp = DEFAULT_MIN_TEMP
@@ -141,6 +141,11 @@ class AtagOneThermostat(ClimateDevice):
         self._current_state = -1
         self._current_operation = ''
 
+        if host:
+           self._host = host
+        else:
+           self._host = self.find_ip(self)
+
         self.update()
  
     @property
@@ -149,21 +154,42 @@ class AtagOneThermostat(ClimateDevice):
         return SUPPORT_FLAGS
 
     @staticmethod
+    def find_ip(self):
+
+        s = socket(AF_INET, SOCK_DGRAM)
+        s.bind(('', 11000))
+
+        for i in range(3):
+           try:
+             data, addr = s.recvfrom(1024)
+             if ('ONE ' in str(data)) and (addr):
+                return str(addr[0])
+           except HTTPError as ex:
+             _LOGGER.error('Atag ONE not found')
+
+    @staticmethod
     def send_request(self, requestPath, jsonPayload):
-        req = urllib.request.Request(BASE_URL.format(
-            self._host,
-            self._port,
-            requestPath),
-            data=str.encode(jsonPayload))
 
-        try:
-            with urllib.request.urlopen(req, timeout=30) as result:
-                resp = json.loads(result.read().decode('utf-8'))
-                return resp
-        except HTTPError as ex:
-            _LOGGER.error('Atag ONE api error')
-            _LOGGER.error(ex.read())
+        for i in range(3):
+            try:
+                req = urllib.request.Request(BASE_URL.format(
+                    self._host,
+                    self._port,
+                    requestPath),
+                    data=str.encode(jsonPayload))
+                with urllib.request.urlopen(req, timeout=30) as result:
+                    resp = json.loads(result.read().decode('utf-8'))
+                    return resp
+            except urllib.error.URLError as url_ex:
+                self._host = self.find_ip(self)
+            except HTTPError as http_ex:
+                if http_ex.code == 404:
+                    self._host = self.find_ip(self)
+                else:
+                    _LOGGER.error('Atag ONE api error')
+                    return None
 
+        _LOGGER.error('Atag ONE connection error')
         return None
 
     @staticmethod
@@ -209,7 +235,6 @@ class AtagOneThermostat(ClimateDevice):
             self._current_temp = self._data['report']['room_temp']
             atag_preset = self._data['control']['ch_mode']
             self._preset = ATAG_PRESET_TO_HA.get(atag_preset)
-            _LOGGER.debug("Preset: %s", self._preset)
 
             boiler_status = int(self._data['report']['boiler_status']) & 14
             if boiler_status == 10:
