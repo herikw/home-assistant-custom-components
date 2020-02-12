@@ -24,6 +24,7 @@ To use this component in your installation, add the following to your configurat
 climate:
   - platform: atagone
     name: Atag One Thermostat
+    #host is optional and can be left out when using dynamic IP address
     host: ip address of ATAG One
     port: 10000
     scan_interval: 20
@@ -39,6 +40,7 @@ Sensors can be added or removed by removing or adding the required entry(s)
 ```yaml
 sensor:
   - platform: atagone
+    #host is optional and can be left out when using dynamic IP address
     host: ip address of ATAG One
     port: 10000
     scan_interval: 20
