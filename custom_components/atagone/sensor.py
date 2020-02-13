@@ -1,7 +1,7 @@
 """
 Adds Support for Atag One Thermostat
 
-Author: herikw 
+Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 Added other report fields
 
@@ -105,19 +105,21 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 def find_ip():
     s = socket(AF_INET, SOCK_DGRAM)
+    s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    s.settimeout(40)
     s.bind(('', 11000))
 
-    for i in range(3):
-       try:
-         data, addr = s.recvfrom(1024)
-         if ('ONE ' in str(data)) and (addr):
-            return str(addr[0])
-       except HTTPError as ex:
-         _LOGGER.error('Atag ONE not found')
-          
-    s.close(self)
-    return None
-    
+    try:
+       data, (addr, port) = s.recvfrom(37,0)
+       if ('ONE ' in str(data)) and (addr):
+          s.close()
+          return str(addr)
+    except HTTPError:
+       _LOGGER.error('timeout exceeded finding ATAG One')
+       return None
+    except socket.timeout:
+       _LOGGER.error('find ATAG One Timeout')
+       return None
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Setup the Atag One sensors."""
@@ -154,7 +156,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 class AtagOneData(Entity):
     """Representation of a Atag One thermostat."""
 
-    def __init__(self, host, port):        
+    def __init__(self, host, port):
         self.data = None
         self._port = port
         self._current_state = -1
@@ -232,7 +234,7 @@ class AtagOneData(Entity):
                 _LOGGER.Error("No status returned from ATAG One")
 
             self._paired = False
- 
+
 class AtagOneSensor(Entity):
     """Representation of a AtagOne Sensor."""
 
@@ -283,43 +285,43 @@ class AtagOneSensor(Entity):
             if self.type == 'room_temp':
                 if 'room_temp' in status:
                     self._state = float(status["room_temp"])
-    
+
             elif self.type == 'outside_temp':
                 if 'outside_temp' in status:
                     self._state = float(status["outside_temp"])
-    
+
             elif self.type == 'avg_outside_temp':
                 if 'tout_avg' in status:
                     self._state = float(status["tout_avg"])
-            
+
             elif self.type == 'pcb_temp':
                 if 'pcb_temp' in status:
                     self._state = float(status["pcb_temp"])
-    
+
             elif self.type == 'ch_setpoint':
                 if 'ch_setpoint' in status:
                     self._state = float(status["ch_setpoint"])
-    
+
             elif self.type == 'ch_water_pressure':
                 if 'ch_water_pres' in status:
                     self._state = float(status["ch_water_pres"])
-    
+
             elif self.type == 'ch_water_temp':
                 if 'ch_water_temp' in status:
                     self._state = float(status["ch_water_temp"])
-    
+
             elif self.type == 'ch_return_temp':
                 if 'ch_return_temp' in status:
                     self._state = float(status["ch_return_temp"])
-            
+
             elif self.type == 'dhw_water_temp':
                 if 'dhw_water_temp' in status:
                     self._state = float(status["dhw_water_temp"])
-    
+
             elif self.type == 'dhw_water_pres':
                 if 'dhw_water_pres' in status:
                     self._state = float(status["dhw_water_pres"])
-    
+
             elif self.type == 'boiler_status':
                 if 'boiler_status' in status:
                     s = int(status["boiler_status"])
@@ -336,7 +338,7 @@ class AtagOneSensor(Entity):
                     else:
                         self._unit = 'Idle'
                         self._icon = SENSOR_TYPES[self.type][2]
-    
+
             elif self.type == 'rel_mod_level':
                 if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
                     if int(status["boiler_status"]) > 0:
@@ -345,20 +347,20 @@ class AtagOneSensor(Entity):
                         self._state = (mml + (1 - mml)) * rml
                     else:
                         self._state = 0
-                   
+
             elif self.type == 'boiler_config':
                 if 'boiler_config' in status:
                     self._state = float(status["boiler_config"])
-    
+
             elif self.type == 'burning_hours':
                 if 'burning_hours' in status:
                     self._state = float(status["burning_hours"])
-    
+
             elif self.type == 'voltage':
                 if 'voltage' in status:
                     self._state = float(status["voltage"])
-    
+
             elif self.type == 'current':
                 if 'current' in status:
                     self._state = float(status["current"])
-              
+
