@@ -144,31 +144,34 @@ class AtagOneThermostat(ClimateDevice):
         if host:
            self._host = host
         else:
-           self._host = self.find_ip(self)
+           self._host = self.find_ip()
 
         self.update()
- 
+
     @property
     def supported_features(self):
         """Return the list of supported features."""
         return SUPPORT_FLAGS
 
     @staticmethod
-    def find_ip(self):
-
+    def find_ip():
         s = socket(AF_INET, SOCK_DGRAM)
+        s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        s.settimeout(40)
         s.bind(('', 11000))
 
-        for i in range(3):
-           try:
-             data, addr = s.recvfrom(1024)
-             if ('ONE ' in str(data)) and (addr):
-                return str(addr[0])
-           except HTTPError as ex:
-             _LOGGER.error('Atag ONE not found')
-              
-        s.close(self)
-        return None
+        try:
+           data, (addr, port) = s.recvfrom(37,0)
+           if ('ONE ' in str(data)) and (addr):
+              s.close()
+              return str(addr)
+        except HTTPError:
+           _LOGGER.error('timeout exceeded finding ATAG One')
+           return None
+        except socket.timeout:
+           _LOGGER.error('find ATAG One Timeout')
+           return None
+
 
     @staticmethod
     def send_request(self, requestPath, jsonPayload):
@@ -184,10 +187,10 @@ class AtagOneThermostat(ClimateDevice):
                     resp = json.loads(result.read().decode('utf-8'))
                     return resp
             except urllib.error.URLError as url_ex:
-                self._host = self.find_ip(self)
+                self._host = self.find_ip()
             except HTTPError as http_ex:
                 if http_ex.code == 404:
-                    self._host = self.find_ip(self)
+                    self._host = self.find_ip()
                 else:
                     _LOGGER.error('Atag ONE api error')
                     return None
@@ -216,7 +219,7 @@ class AtagOneThermostat(ClimateDevice):
 
     def update(self):
         """Update unit attributes."""
-        
+
         jsonPayload = json.dumps({
             'retrieve_message': {
                 'seqnr': 0,
@@ -334,7 +337,7 @@ class AtagOneThermostat(ClimateDevice):
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
-        
+
         target_temp = kwargs.get(ATTR_TEMPERATURE)
         if target_temp is None:
             return
