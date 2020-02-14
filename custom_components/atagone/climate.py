@@ -168,7 +168,7 @@ class AtagOneThermostat(ClimateDevice):
         except HTTPError:
            _LOGGER.error('timeout exceeded finding ATAG One')
            return None
-        except socket.timeout:
+        except timeout:
            _LOGGER.error('find ATAG One Timeout')
            return None
 
@@ -186,6 +186,8 @@ class AtagOneThermostat(ClimateDevice):
                 with urllib.request.urlopen(req, timeout=30) as result:
                     resp = json.loads(result.read().decode('utf-8'))
                     return resp
+            except timeout:
+                pass
             except urllib.error.URLError as url_ex:
                 self._host = self.find_ip()
             except HTTPError as http_ex:
@@ -349,3 +351,4 @@ class AtagOneThermostat(ClimateDevice):
 
             if status != 2:
                 _LOGGER.error("Request Status: %s", status)
+ 
