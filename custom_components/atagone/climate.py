@@ -168,7 +168,7 @@ class AtagOneThermostat(ClimateDevice):
         except HTTPError:
            _LOGGER.error('timeout exceeded finding ATAG One')
            return None
-        except socket.timeout:
+        except timeout:
            _LOGGER.error('find ATAG One Timeout')
            return None
 
