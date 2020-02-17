@@ -1,51 +1,35 @@
-
 """
 Adds Support for Atag One Thermostat
 
 Author: herikw
 https://github.com/herikw/home-assistant-custom-components
-Added other report fields
 
 Configuration for this platform:
 
-sensor:
+climate:
   - platform: atagone
-    [host: IP_ADDRESS]
+    name: Atag One Thermostat
+    host: IP_ADDRESS
     port: 10000
     scan_interval: 10
-    resources:
-      - room_temp
-      - outside_temp
-      - avg_outside_temp
-      - pcb_temp
-      - ch_setpoint
-      - ch_water_pressure
-      - ch_water_temp
-      - ch_return_temp
-      - dhw_water_temp
-      - dhw_water_pres
-      - boiler_status
-      - boiler_config
-      - burning_hours
-      - voltage
-      - current
-      - rel_mod_level
 """
 
 import logging
-from datetime import timedelta
-import voluptuous as vol
 import json
+import voluptuous as vol
 import urllib.request
 from urllib.error import HTTPError
+from typing import Optional, List
 import requests
 from socket import *
 
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_RESOURCES)
-from homeassistant.util import Throttle
-from homeassistant.helpers.entity import Entity
+from homeassistant.components.climate import ClimateDevice, PLATFORM_SCHEMA
+from homeassistant.components.climate.const import (SUPPORT_TARGET_TEMPERATURE,
+                                                    HVAC_MODE_HEAT, HVAC_MODE_OFF, CURRENT_HVAC_HEAT,
+                                                    CURRENT_HVAC_IDLE, SUPPORT_PRESET_MODE,
+                                                    PRESET_AWAY, PRESET_ECO, PRESET_HOME)
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_NAME, TEMP_CELSIUS, ATTR_TEMPERATURE
+import homeassistant.helpers.config_validation as config_validation
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,29 +37,61 @@ DEFAULT_NAME = 'Atag One Thermostat'
 DEFAULT_TIMEOUT = 30
 BASE_URL = 'http://{0}:{1}{2}'
 MAC_ADDRESS = '01:23:45:67:89:01'
+DEFAULT_MIN_TEMP = 4
+DEFAULT_MAX_TEMP = 27
 
-SENSOR_PREFIX = 'Atag One '
+SUPPORT_FLAGS = (SUPPORT_TARGET_TEMPERATURE)
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
+    vol.Optional(CONF_NAME, default=DEFAULT_NAME): config_validation.string,
+    vol.Optional(CONF_HOST): config_validation.string,
+    vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
+})
 
-SENSOR_TYPES = {
-    'room_temp': ['Room Temp', '°C', 'mdi:thermometer'],
-    'outside_temp': ['Outside Temp', '°C', 'mdi:thermometer'],
-    'avg_outside_temp': ['Average Outside Temp', '°C', 'mdi:thermometer'],
-    'pcb_temp': ['PCB Temp', '°C', 'mdi:thermometer'],
-    'ch_setpoint': ['Central Heating Setpoint', '°C', 'mdi:thermometer'],
-    'ch_water_pressure': ['Central Heating Water Pressure', 'Bar', 'mdi:gauge'],
-    'ch_water_temp': ['Central Heating Water Temp', '°C', 'mdi:thermometer'],
-    'ch_return_temp': ['Central Heating Return Temp', '°C', 'mdi:thermometer'],
-    'dhw_water_temp': ['Hot Water Temp', '°C', 'mdi:thermometer'],
-    'dhw_water_pres': ['Hot Water Pressure', 'Bar', 'mdi:gauge'],
-    'boiler_status': ['Boiler Status', '', 'mdi:flash'],
-    'boiler_config': ['Boiler Config', '', 'mdi:flash'],
-    'burning_hours': ['Burning Hours', 'h', 'mdi:fire'],
-    'voltage': ['Voltage', 'V', 'mdi:flash'],
-    'current': ['Current', 'mA', 'mdi:flash-auto'],
-    'rel_mod_level': ['Burner', '%', 'mdi:fire'],
+HA_PRESET_TO_ATAG = {
+    PRESET_AWAY: 3,
+    PRESET_ECO: 2,
+    PRESET_HOME: 1
 }
+ATAG_PRESET_TO_HA = {v: k for k, v in HA_PRESET_TO_ATAG.items()}
+
+# jsonPayload data templates
+# update payload need to be in exact order. So, using string instead of json.dumps
+UPDATE_MODE = '''{{
+    "update_message":{{
+        "seqnr":0,
+        "account_auth":{{
+            "user_account":"",
+            "mac_address":"{0}"
+        }},
+        "device":null,
+        "status":null,
+        "report":null,
+        "configuration":null,
+        "schedules":null,
+        "control":{{
+            "ch_mode":{1}
+        }}
+    }}
+}}'''
+
+UPDATE_TEMP = '''{{
+    "update_message":{{
+        "seqnr":0,
+        "account_auth":{{
+            "user_account":"",
+            "mac_address":"{0}"
+        }},
+        "device": null,
+        "status": null,
+        "report": null,
+        "configuration": null,
+        "schedules": null,
+        "control":{{
+            "ch_mode_temp":{1}
+        }}
+    }}
+}}'''
 
 PAIR_MESSAGE = '''{{
     "pair_message":{{
@@ -92,103 +108,70 @@ PAIR_MESSAGE = '''{{
 }}'''
 
 READ_PATH = '/retrieve'
+UPDATE_PATH = '/update'
 PAIR_PATH = '/pair_message'
 MESSAGE_INFO_CONTROL = 1
 MESSAGE_INFO_REPORT = 8
 MESSAGE_INFO_EXTRA = 64
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Optional(CONF_HOST): cv.string,
-    vol.Optional(CONF_PORT, default=10000): cv.positive_int,
-    vol.Required(CONF_RESOURCES, default=[]):
-        vol.All(cv.ensure_list, [vol.In(SENSOR_TYPES)]),
-})
-
-def find_ip():
-    s = socket(AF_INET, SOCK_DGRAM)
-    s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    s.settimeout(60)
-    s.bind(('', 11000))
-
-    try:
-       data, (addr, port) = s.recvfrom(37,0)
-       if ('ONE ' in str(data)) and (addr):
-          s.close()
-          return str(addr)
-    except HTTPError:
-       _LOGGER.error('timeout exceeded finding ATAG One')
-       return None
-    except timeout:
-       _LOGGER.error('find ATAG One Timeout')
-       return None
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Setup the Atag One sensors."""
-    scan_interval = config.get(CONF_SCAN_INTERVAL)
-    conf_host = config.get(CONF_HOST)
-    port = config.get(CONF_PORT)
+    """Setup the Atag One Device"""
 
-    if (conf_host):
-        host = conf_host
-    else:
-        host = find_ip()
-
-    try:
-        data = AtagOneData(host, port)
-    except requests.exceptions.HTTPError as error:
-        _LOGGER.error(error)
-        return False
-
-    entities = []
-
-    for resource in config[CONF_RESOURCES]:
-        sensor_type = resource.lower()
-
-        if sensor_type not in SENSOR_TYPES:
-            SENSOR_TYPES[sensor_type] = [
-                sensor_type.title(), '', 'mdi:flash']
-
-        entities.append(AtagOneSensor(data, sensor_type))
-
-    add_entities(entities)
+    add_entities([AtagOneThermostat(config.get(CONF_NAME), config.get(CONF_HOST), config.get(CONF_PORT))])
 
 
-# pylint: disable=abstract-method
-class AtagOneData(Entity):
-    """Representation of a Atag One thermostat."""
+class AtagOneThermostat(ClimateDevice):
+    """Representation of a Atag One device"""
 
-    def __init__(self, host, port):
-        self.data = None
+    def __init__(self, name, host, port):
+        """Initialize"""
+        self._data = None
+        self._name = name
+        self._icon = 'mdi:radiator'
         self._port = port
-        self._current_state = -1
+
+        self._min_temp = DEFAULT_MIN_TEMP
+        self._max_temp = DEFAULT_MAX_TEMP
+        self._current_temp = None
+        self._current_setpoint = None
         self._paired = False
-        self._host = host
+        self._heating = False
+        self._preset = None
+        self._current_state = -1
+        self._current_operation = ''
 
-
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update(self):
-        """Update the data from the thermostat."""
-
-        jsonPayload = json.dumps({
-            'retrieve_message': {
-                'seqnr': 0,
-                'account_auth': {
-                   'user_account': "",
-                    'mac_address': "01:23:45:67:89:01"
-                },
-                'info': MESSAGE_INFO_CONTROL + MESSAGE_INFO_REPORT + MESSAGE_INFO_EXTRA
-            }
-        })
-
-        resp = self.send_request(self, READ_PATH, jsonPayload)
-        reply = resp['retrieve_reply']
-
-        status = reply['acc_status']
-        if status == 2:
-            self.data = reply['report']
+        if host:
+           self._host = host
         else:
-            pair_atag()
-            _LOGGER.error("Please accept pairing request on Atag ONE Device")
+           self._host = self.find_ip()
+
+        self.update()
+
+    @property
+    def supported_features(self):
+        """Return the list of supported features."""
+        return SUPPORT_FLAGS
+
+    @staticmethod
+    def find_ip():
+        s = socket(AF_INET, SOCK_DGRAM)
+        s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        s.settimeout(40)
+        s.bind(('', 11000))
+
+        try:
+           data, (addr, port) = s.recvfrom(37,0)
+           if ('ONE ' in str(data)) and (addr):
+              s.close()
+              return str(addr)
+        except HTTPError:
+           _LOGGER.error('timeout exceeded finding ATAG One')
+           return None
+        except socket.timeout:
+           _LOGGER.error('find ATAG One Timeout')
+           return None
+
 
     @staticmethod
     def send_request(self, requestPath, jsonPayload):
@@ -203,13 +186,11 @@ class AtagOneData(Entity):
                 with urllib.request.urlopen(req, timeout=30) as result:
                     resp = json.loads(result.read().decode('utf-8'))
                     return resp
-            except timeout:
-                pass
             except urllib.error.URLError as url_ex:
-                self._host = find_ip()
+                self._host = self.find_ip()
             except HTTPError as http_ex:
                 if http_ex.code == 404:
-                    self._host = find_ip()
+                    self._host = self.find_ip()
                 else:
                     _LOGGER.error('Atag ONE api error')
                     return None
@@ -223,12 +204,10 @@ class AtagOneData(Entity):
         if self._paired == False:
             jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
             resp = self.send_request(self, PAIR_PATH, jsonPayload)
-            reply = resp['pair_reply']
-
-            status = reply['acc_status']
+            self._data = resp['pair_reply']
+            status = self._data['acc_status']
             if status == 2:
                 self._paired = True
-                return
             elif status == 1:
                 _LOGGER.info("Waiting for pairing confirmation")
             elif status == 3:
@@ -238,131 +217,135 @@ class AtagOneData(Entity):
 
             self._paired = False
 
-class AtagOneSensor(Entity):
-    """Representation of a AtagOne Sensor."""
+    def update(self):
+        """Update unit attributes."""
 
-    def __init__(self, data, sensor_type):
-        """Initialize the sensor."""
-        self.data = data
-        self.type = sensor_type
-        self._last_updated = None
-        self._name = SENSOR_PREFIX + SENSOR_TYPES[self.type][0]
-        self._unit = SENSOR_TYPES[self.type][1]
-        self._icon = SENSOR_TYPES[self.type][2]
-        self._state = None
+        jsonPayload = json.dumps({
+            'retrieve_message': {
+                'seqnr': 0,
+                'account_auth': {
+                   'user_account': "",
+                    'mac_address': "01:23:45:67:89:01"
+                },
+                'info': MESSAGE_INFO_CONTROL + MESSAGE_INFO_REPORT + MESSAGE_INFO_EXTRA
+            }
+
+        })
+
+        resp = self.send_request(self, READ_PATH, jsonPayload)
+        self._data = resp['retrieve_reply']
+        status = self._data['acc_status']
+
+        if status == 2:
+            self._current_setpoint = self._data['report']['shown_set_temp']
+            self._current_temp = self._data['report']['room_temp']
+            atag_preset = self._data['control']['ch_mode']
+            self._preset = ATAG_PRESET_TO_HA.get(atag_preset)
+
+            boiler_status = int(self._data['report']['boiler_status']) & 14
+            if boiler_status == 10:
+                self._heating = True
+            else:
+                self._heating = False
+        else:
+            self.pair_atag()
+            _LOGGER.error("Please accept pairing request on Atag ONE Device")
+
+    @property
+    def hvac_mode(self) -> str:
+        """Return hvac operation """
+        if self._heating:
+            return HVAC_MODE_HEAT
+        return HVAC_MODE_OFF
+
+    @property
+    def hvac_modes(self) -> List[str]:
+        """Return the list of available hvac operation modes. Need to be a subset of HVAC_MODES. """
+        return [HVAC_MODE_HEAT]
+
+    def set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set new target hvac mode."""
+        pass
+
+    @property
+    def hvac_action(self) -> Optional[str]:
+        """Return the current running hvac operation if supported.  Need to be one of CURRENT_HVAC_*.  """
+        if self._heating:
+            return CURRENT_HVAC_HEAT
+        return CURRENT_HVAC_IDLE
+
+    @property
+    def should_poll(self):
+        """Return the polling state."""
+        return True
 
     @property
     def name(self):
-        """Return the name of the sensor."""
+        """Return the name of the climate device."""
         return self._name
 
     @property
-    def icon(self):
-        """Icon to use in the frontend, if any."""
-        return self._icon
+    def temperature_unit(self):
+        """Return the unit of measurement."""
+        return TEMP_CELSIUS
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        return self._state
+    def current_temperature(self):
+        """Return the current temperature."""
+        return self._current_temp
 
     @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement of this entity, if any."""
-        return self._unit
+    def min_temp(self):
+        """Return the minimum temperature."""
+        if self._min_temp:
+            return self._min_temp
 
     @property
-    def device_state_attributes(self):
-        """Return the state attributes of this device."""
-        attr = {}
-        if self._last_updated is not None:
-            attr['Last Updated'] = self._last_updated
-        return attr
+    def max_temp(self):
+        """Return the maximum temperature."""
+        if self._max_temp:
+            return self._max_temp
 
-    def update(self):
-        """Get the latest data and use it to update our sensor state."""
-        self.data.update()
-        status = self.data.data
-        details = status["details"]
-        if details:
-            if self.type == 'room_temp':
-                if 'room_temp' in status:
-                    self._state = float(status["room_temp"])
+    @property
+    def target_temperature(self):
+        """Return the temperature we try to reach."""
+        return self._current_setpoint
 
-            elif self.type == 'outside_temp':
-                if 'outside_temp' in status:
-                    self._state = float(status["outside_temp"])
+    @property
+    def preset_mode(self) -> Optional[str]:
+        """Return the current preset mode, e.g., home, away, temp."""
+        if self._preset is not None:
+            return self._preset.lower()
+        return None
 
-            elif self.type == 'avg_outside_temp':
-                if 'tout_avg' in status:
-                    self._state = float(status["tout_avg"])
+    @property
+    def preset_modes(self):
+        """Return a list of available preset modes."""
+        return [PRESET_HOME, PRESET_AWAY, PRESET_ECO]
 
-            elif self.type == 'pcb_temp':
-                if 'pcb_temp' in status:
-                    self._state = float(status["pcb_temp"])
+    def set_preset_mode(self, preset_mode: Optional[str]) -> None:
+        """Set a new preset mode. If preset_mode is None, then revert to auto."""
+        self._atag_preset = HA_PRESET_TO_ATAG.get(preset_mode, PRESET_HOME)
 
-            elif self.type == 'ch_setpoint':
-                if 'ch_setpoint' in status:
-                    self._state = float(status["ch_setpoint"])
+        jsonPayload = UPDATE_MODE.format(MAC_ADDRESS, self._atag_preset)
+        resp = self.send_request(self, UPDATE_PATH, jsonPayload)
+        self._data = resp['update_reply']
+        status = self._data['acc_status']
 
-            elif self.type == 'ch_water_pressure':
-                if 'ch_water_pres' in status:
-                    self._state = float(status["ch_water_pres"])
+        if status != 2:
+            _LOGGER.error("Request Status: %s", status)
 
-            elif self.type == 'ch_water_temp':
-                if 'ch_water_temp' in status:
-                    self._state = float(status["ch_water_temp"])
+    def set_temperature(self, **kwargs):
+        """Set new target temperature."""
 
-            elif self.type == 'ch_return_temp':
-                if 'ch_return_temp' in status:
-                    self._state = float(status["ch_return_temp"])
+        target_temp = kwargs.get(ATTR_TEMPERATURE)
+        if target_temp is None:
+            return
+        else:
+            jsonPayload = UPDATE_TEMP.format(MAC_ADDRESS, target_temp)
+            resp = self.send_request(self, UPDATE_PATH, jsonPayload)
+            self._data = resp['update_reply']
+            status = self._data['acc_status']
 
-            elif self.type == 'dhw_water_temp':
-                if 'dhw_water_temp' in status:
-                    self._state = float(status["dhw_water_temp"])
-
-            elif self.type == 'dhw_water_pres':
-                if 'dhw_water_pres' in status:
-                    self._state = float(status["dhw_water_pres"])
-
-            elif self.type == 'boiler_status':
-                if 'boiler_status' in status:
-                    s = int(status["boiler_status"])
-                    self._state = s & 14
-                    if self._state == 8:
-                        self._unit = 'Boiler'
-                        self._icon = 'mdi:fire'
-                    elif self._state == 10:
-                        self._unit = 'Central'
-                        self._icon = 'mdi:fire'
-                    elif s & 14 == 12:
-                        self._unit = 'Water'
-                        self._icon = 'mdi:fire'
-                    else:
-                        self._unit = 'Idle'
-                        self._icon = SENSOR_TYPES[self.type][2]
-
-            elif self.type == 'rel_mod_level':
-                if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
-                    if int(status["boiler_status"]) > 0:
-                        mml = int(details["min_mod_level"])
-                        rml = int(details["rel_mod_level"])
-                        self._state = (mml + (1 - mml)) * rml
-                    else:
-                        self._state = 0
-
-            elif self.type == 'boiler_config':
-                if 'boiler_config' in status:
-                    self._state = float(status["boiler_config"])
-
-            elif self.type == 'burning_hours':
-                if 'burning_hours' in status:
-                    self._state = float(status["burning_hours"])
-
-            elif self.type == 'voltage':
-                if 'voltage' in status:
-                    self._state = float(status["voltage"])
-
-            elif self.type == 'current':
-                if 'current' in status:
-                    self._state = float(status["current"])
+            if status != 2:
+                _LOGGER.error("Request Status: %s", status)
