@@ -51,8 +51,6 @@ from homeassistant.helpers.entity import Entity
 
 from .const import DEFAULT_NAME, _LOGGER
 
-SENSOR_PREFIX = "Atag One "
-
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 
 SENSOR_TYPES = {
@@ -110,6 +108,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     await coordinator.async_refresh()
 
     entities = []
+    sensor_prefix = config.get(CONF_NAME)
 
     for resource in config[CONF_RESOURCES]:
         sensor_type = resource.lower()
@@ -117,7 +116,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         if sensor_type not in SENSOR_TYPES:
             SENSOR_TYPES[sensor_type] = [sensor_type.title(), "", "mdi:flash"]
 
-        entities.append(AtagOneSensor(coordinator, sensor_type))
+        entities.append(AtagOneSensor(coordinator, sensor_type, sensor_prefix))
 
     async_add_entities(entities)
 
@@ -125,12 +124,14 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class AtagOneSensor(Entity):
     """Representation of a AtagOne Sensor."""
 
-    def __init__(self, coordinator, sensor_type):
+    def __init__(self, coordinator, sensor_type, sensor_prefix):
         """Initialize the sensor."""
         self.coordinator = coordinator
         self.type = sensor_type
         self._last_updated = None
-        self._name = SENSOR_PREFIX + SENSOR_TYPES[self.type][0]
+        self._sensor_prefix = sensor_prefix
+        self._entity_type = SENSOR_TYPES[self.type][0]
+        self._name = "{} {}".format(sensor_prefix, SENSOR_TYPES[self.type][0])
         self._unit = SENSOR_TYPES[self.type][1]
         self._icon = SENSOR_TYPES[self.type][2]
         self._state = self.state
@@ -138,6 +139,7 @@ class AtagOneSensor(Entity):
     def boiler_status(self, state):
         """ boiler status conversions """
         state = state & 14
+        _LOGGER.debug(state)
         if state == 8:
             self._unit = "Boiler"
             self._icon = "mdi:fire"
@@ -175,6 +177,11 @@ class AtagOneSensor(Entity):
     def name(self):
         """Return the name of the sensor."""
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return the unique ID of the binary sensor."""
+        return f"{self._sensor_prefix}_{self._entity_type}"
 
     @property
     def icon(self):

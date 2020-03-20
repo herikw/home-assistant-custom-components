@@ -227,6 +227,11 @@ class AtagOneThermostat(ClimateDevice):
         return self._name
 
     @property
+    def unique_id(self):
+        """Return the unique ID of the binary sensor."""
+        return self._name
+
+    @property
     def temperature_unit(self):
         """Return the unit of measurement."""
         return TEMP_CELSIUS
