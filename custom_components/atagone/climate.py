@@ -20,7 +20,7 @@ import voluptuous as vol
 from .util import atag_date, atag_time
 from .atagoneapi import AtagOneApi
 
-from homeassistant.components.climate import ClimateDevice, PLATFORM_SCHEMA
+from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_PRESET_MODE,
@@ -143,7 +143,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     )
 
 
-class AtagOneThermostat(ClimateDevice):
+class AtagOneThermostat(ClimateEntity):
     """Representation of a Atag One device"""
 
     def __init__(self, data):
