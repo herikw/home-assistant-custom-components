@@ -93,7 +93,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
         """ fetch data from the Atag API wrapper"""
         async with async_timeout.timeout(10):
             data = await hass.async_add_executor_job(api.fetch_data)
-            """ data = api.fetch_data() """
             return data
 
     coordinator = DataUpdateCoordinator(
