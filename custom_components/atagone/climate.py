@@ -107,7 +107,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     api = AtagOneApi(config.get(CONF_PORT), config.get(CONF_HOST))
     await hass.async_add_executor_job(api.update)
 
-    entities = [AtagOneThermostat(api)]
+    entities = [AtagOneThermostat(api, config.get(CONF_NAME))]
     async_add_entities(entities, True)
 
     def create_vacation_service(service):
@@ -148,11 +148,11 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 class AtagOneThermostat(ClimateEntity):
     """Representation of a Atag One device"""
 
-    def __init__(self, data):
+    def __init__(self, data, name):
         """Initialize"""
         self.data = data
         self._icon = "mdi:radiator"
-        self._name = DEFAULT_NAME
+        self._name = name
         self._min_temp = DEFAULT_MIN_TEMP
         self._max_temp = DEFAULT_MAX_TEMP
         self._current_temp = None
