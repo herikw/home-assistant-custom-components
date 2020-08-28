@@ -1,7 +1,7 @@
 """
 Adds Support for Atag One Thermostat
 
-Author: herikw 
+Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 Added other report fields
 
@@ -9,7 +9,7 @@ Configuration for this platform:
 
 sensor:
   - platform: atagone
-    host: IP_ADDRESS
+    [host: IP_ADDRESS]
     port: 10000
     scan_interval: 10
     resources:
@@ -31,193 +31,157 @@ sensor:
       - rel_mod_level
 """
 
-import logging
 from datetime import timedelta
 import voluptuous as vol
-import json
-import urllib.request
-from urllib.error import HTTPError
-import requests
+import async_timeout
+
+from .atagoneapi import AtagOneApi
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_RESOURCES)
-from homeassistant.util import Throttle
+import homeassistant.helpers.config_validation as config_validation
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PORT,
+    CONF_RESOURCES,
+    CONF_NAME,
+)
+
 from homeassistant.helpers.entity import Entity
 
-_LOGGER = logging.getLogger(__name__)
+from .const import DEFAULT_NAME, _LOGGER
 
-DEFAULT_NAME = 'Atag One Thermostat'
-DEFAULT_TIMEOUT = 30
-BASE_URL = 'http://{0}:{1}{2}'
-MAC_ADDRESS = '01:23:45:67:89:01'
-
-SENSOR_PREFIX = 'Atag One '
-
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=10)
+MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 
 SENSOR_TYPES = {
-    'room_temp': ['Room Temp', '°C', 'mdi:thermometer'],
-    'outside_temp': ['Outside Temp', '°C', 'mdi:thermometer'],
-    'avg_outside_temp': ['Average Outside Temp', '°C', 'mdi:thermometer'],
-    'pcb_temp': ['PCB Temp', '°C', 'mdi:thermometer'],
-    'ch_setpoint': ['Central Heating Setpoint', '°C', 'mdi:thermometer'],
-    'ch_water_pressure': ['Central Heating Water Pressure', 'Bar', 'mdi:gauge'],
-    'ch_water_temp': ['Central Heating Water Temp', '°C', 'mdi:thermometer'],
-    'ch_return_temp': ['Central Heating Return Temp', '°C', 'mdi:thermometer'],
-    'dhw_water_temp': ['Hot Water Temp', '°C', 'mdi:thermometer'],
-    'dhw_water_pres': ['Hot Water Pressure', 'Bar', 'mdi:gauge'],
-    'boiler_status': ['Boiler Status', '', 'mdi:flash'],
-    'boiler_config': ['Boiler Config', '', 'mdi:flash'],
-    'burning_hours': ['Burning Hours', 'h', 'mdi:fire'],
-    'voltage': ['Voltage', 'V', 'mdi:flash'],
-    'current': ['Current', 'mA', 'mdi:flash-auto'],
-    'rel_mod_level': ['Burner', '%', 'mdi:fire'],
+    "room_temp": ["Room Temp", "°C", "mdi:thermometer"],
+    "outside_temp": ["Outside Temp", "°C", "mdi:thermometer"],
+    "avg_outside_temp": ["Average Outside Temp", "°C", "mdi:thermometer"],
+    "pcb_temp": ["PCB Temp", "°C", "mdi:thermometer"],
+    "ch_setpoint": ["Central Heating Setpoint", "°C", "mdi:thermometer"],
+    "ch_water_pressure": ["Central Heating Water Pressure", "Bar", "mdi:gauge"],
+    "ch_water_temp": ["Central Heating Water Temp", "°C", "mdi:thermometer"],
+    "ch_return_temp": ["Central Heating Return Temp", "°C", "mdi:thermometer"],
+    "dhw_water_temp": ["Hot Water Temp", "°C", "mdi:thermometer"],
+    "dhw_water_pres": ["Hot Water Pressure", "Bar", "mdi:gauge"],
+    "boiler_status": ["Boiler Status", "", "mdi:flash"],
+    "boiler_config": ["Boiler Config", "", "mdi:flash"],
+    "burning_hours": ["Burning Hours", "h", "mdi:fire"],
+    "voltage": ["Voltage", "V", "mdi:flash"],
+    "current": ["Current", "mA", "mdi:flash-auto"],
+    "rel_mod_level": ["Burner", "%", "mdi:fire"],
 }
 
-PAIR_MESSAGE = '''{{
-    "pair_message":{{
-        "seqnr": 0,
-        "accounts":{{
-            "entries":[{{
-                "user_account": "",
-                "mac_address": {0},
-                "device_name": "Home Assistant",
-                "account_type": 0
-            }}]
-        }}
-    }}
-}}'''
-
-READ_PATH = '/retrieve'
-PAIR_PATH = '/pair_message'
-MESSAGE_INFO_CONTROL = 1
-MESSAGE_INFO_REPORT = 8
-MESSAGE_INFO_EXTRA = 64
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
-    vol.Required(CONF_HOST): cv.string,
-    vol.Optional(CONF_PORT, default=10000): cv.positive_int,
-    vol.Required(CONF_RESOURCES, default=[]):
-        vol.All(cv.ensure_list, [vol.In(SENSOR_TYPES)]),
-})
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
+    {
+        vol.Optional(CONF_NAME, default=DEFAULT_NAME): config_validation.string,
+        vol.Optional(CONF_HOST): config_validation.string,
+        vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
+        vol.Required(CONF_RESOURCES, default=[]): vol.All(
+            config_validation.ensure_list, [vol.In(SENSOR_TYPES)]
+        ),
+    }
+)
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     """Setup the Atag One sensors."""
-    host = config.get(CONF_HOST)
-    port = config.get(CONF_PORT)
-    data = AtagOneData(host, port)
+
+    api = AtagOneApi(config.get(CONF_PORT), config.get(CONF_HOST))
+
+    async def async_update_data():
+        """ fetch data from the Atag API wrapper"""
+        async with async_timeout.timeout(10):
+            data = await hass.async_add_executor_job(api.fetch_data)
+            return data
+
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name="atag_one_sensor",
+        update_method=async_update_data,
+        # Polling interval. Will only be polled if there are subscribers.
+        update_interval=timedelta(seconds=30),
+    )
+
+    # Fetch initial data so we have data when entities subscribe
+    await coordinator.async_refresh()
 
     entities = []
+    sensor_prefix = config.get(CONF_NAME)
 
     for resource in config[CONF_RESOURCES]:
         sensor_type = resource.lower()
 
         if sensor_type not in SENSOR_TYPES:
-            SENSOR_TYPES[sensor_type] = [
-                sensor_type.title(), '', 'mdi:flash']
+            SENSOR_TYPES[sensor_type] = [sensor_type.title(), "", "mdi:flash"]
 
-        entities.append(AtagOneSensor(data, sensor_type))
+        entities.append(AtagOneSensor(coordinator, sensor_type, sensor_prefix))
 
-    add_entities(entities)
+    async_add_entities(entities)
 
 
-# pylint: disable=abstract-method
-class AtagOneData(Entity):
-    """Representation of a Atag One thermostat."""
-
-    def __init__(self, host, port):        
-        self.data = None
-        self._host = host
-        self._port = port
-        self._current_state = -1
-        self._paired = False
-
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update(self):
-        """Update the data from the thermostat."""
-
-        jsonPayload = json.dumps({
-            'retrieve_message': {
-                'seqnr': 0,
-                'account_auth': {
-                   'user_account': "",
-                    'mac_address': "01:23:45:67:89:01"
-                },
-                'info': MESSAGE_INFO_CONTROL + MESSAGE_INFO_REPORT + MESSAGE_INFO_EXTRA
-            }
-        })
-
-        resp = self.send_request(self, READ_PATH, jsonPayload)
-
-        if resp != None:
-            reply = resp['retrieve_reply']
-            _LOGGER.debug("Data = %s", reply)
-
-            status = reply['acc_status']
-            if status == 2:
-                self.data = reply['report']
-            else:
-                self.pair_atag(self)
-                _LOGGER.error("Please accept pairing request on Atag ONE Device")
-
-    @staticmethod
-    def send_request(self, requestPath, jsonPayload):
-        req = urllib.request.Request(BASE_URL.format(
-            self._host,
-            self._port,
-            requestPath),
-            data=str.encode(jsonPayload))
-
-        try:
-            with urllib.request.urlopen(req, timeout=30) as result:
-                resp = json.loads(result.read().decode('utf-8'))
-                return resp
-        except Exception:        
-            return None
-
-    @staticmethod
-    def pair_atag(self):
-
-        if self._paired == False:
-            jsonPayload = PAIR_MESSAGE.format(MAC_ADDRESS)
-            resp = self.send_request(self, PAIR_PATH, jsonPayload)
-
-            if resp != None:
-                reply = resp['pair_reply']
-                _LOGGER.debug("Data = %s", reply)
-
-                status = reply['acc_status']
-                if status == 2:
-                    self._paired = True
-                    return
-                elif status == 1:
-                    _LOGGER.info("Waiting for pairing confirmation")
-                elif status == 3:
-                    _LOGGER.Error("Waiting for pairing confirmation")
-                elif status == 0:
-                    _LOGGER.Error("No status returned from ATAG One")
-
-            self._paired = False
- 
 class AtagOneSensor(Entity):
     """Representation of a AtagOne Sensor."""
 
-    def __init__(self, data, sensor_type):
+    def __init__(self, coordinator, sensor_type, sensor_prefix):
         """Initialize the sensor."""
-        self.data = data
+        self.coordinator = coordinator
         self.type = sensor_type
         self._last_updated = None
-        self._name = SENSOR_PREFIX + SENSOR_TYPES[self.type][0]
+        self._sensor_prefix = sensor_prefix
+        self._entity_type = SENSOR_TYPES[self.type][0]
+        self._name = "{} {}".format(sensor_prefix, SENSOR_TYPES[self.type][0])
         self._unit = SENSOR_TYPES[self.type][1]
         self._icon = SENSOR_TYPES[self.type][2]
-        self._state = None
+        self._state = self.state
+
+    def boiler_status(self, state):
+        """ boiler status conversions """
+        state = state & 14
+        _LOGGER.debug(state)
+        if state == 8:
+            self._unit = "Boiler"
+            self._icon = "mdi:fire"
+        elif state == 10:
+            self._unit = "Central"
+            self._icon = "mdi:fire"
+        elif state == 12:
+            self._unit = "Water"
+            self._icon = "mdi:fire"
+        else:
+            self._unit = "Idle"
+            self._icon = "mdi:flash"
+
+        return state
+
+    @property
+    def should_poll(self):
+        """No need to poll. Coordinator notifies entity of updates."""
+        return False
+
+    @property
+    def available(self):
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
+    async def async_added_to_hass(self):
+        """When entity is added to hass."""
+        self.coordinator.async_add_listener(self.async_write_ha_state)
+
+    async def async_will_remove_from_hass(self):
+        """When entity will be removed from hass."""
+        self.coordinator.async_remove_listener(self.async_write_ha_state)
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self._name
+
+    @property
+    def unique_id(self):
+        """Return the unique ID of the binary sensor."""
+        return f"{self._sensor_prefix}_{self._entity_type}"
 
     @property
     def icon(self):
@@ -227,7 +191,16 @@ class AtagOneSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        try:
+            state = self.coordinator.data[self.type]
+            if state:
+                if self.type == "boiler_status":
+                    return self.boiler_status(state)
+                return state
+            return 0
+        except KeyError:
+            _LOGGER.error("can't find %s", self.type)
+            return None
 
     @property
     def unit_of_measurement(self):
@@ -239,98 +212,10 @@ class AtagOneSensor(Entity):
         """Return the state attributes of this device."""
         attr = {}
         if self._last_updated is not None:
-            attr['Last Updated'] = self._last_updated
+            attr["Last Updated"] = self._last_updated
         return attr
 
-    def update(self):
-        """Get the latest data and use it to update our sensor state."""
-        self.data.update()
-        status = self.data.data
-
-        if status != None:
-            details = status["details"]
-
-            if self.type == 'room_temp':
-                if 'room_temp' in status:
-                    self._state = float(status["room_temp"])
-
-            elif self.type == 'outside_temp':
-                if 'outside_temp' in status:
-                    self._state = float(status["outside_temp"])
-
-            elif self.type == 'avg_outside_temp':
-                if 'tout_avg' in status:
-                    self._state = float(status["tout_avg"])
-
-            elif self.type == 'pcb_temp':
-                if 'pcb_temp' in status:
-                    self._state = float(status["pcb_temp"])
-
-            elif self.type == 'ch_setpoint':
-                if 'ch_setpoint' in status:
-                    self._state = float(status["ch_setpoint"])
-
-            elif self.type == 'ch_water_pressure':
-                if 'ch_water_pres' in status:
-                    self._state = float(status["ch_water_pres"])
-
-            elif self.type == 'ch_water_temp':
-                if 'ch_water_temp' in status:
-                    self._state = float(status["ch_water_temp"])
-
-            elif self.type == 'ch_return_temp':
-                if 'ch_return_temp' in status:
-                    self._state = float(status["ch_return_temp"])
-
-            elif self.type == 'dhw_water_temp':
-                if 'dhw_water_temp' in status:
-                    self._state = float(status["dhw_water_temp"])
-
-            elif self.type == 'dhw_water_pres':
-                if 'dhw_water_pres' in status:
-                    self._state = float(status["dhw_water_pres"])
-
-            elif self.type == 'boiler_status':
-                if 'boiler_status' in status:
-                    s = int(status["boiler_status"])
-                    self._state = s & 14
-                    if self._state == 8:
-                        self._unit = 'Boiler'
-                        self._icon = 'mdi:fire'
-                    elif self._state == 10:
-                        self._unit = 'Central'
-                        self._icon = 'mdi:fire'
-                    elif s & 14 == 12:
-                        self._unit = 'Water'
-                        self._icon = 'mdi:fire'
-                    else:
-                        self._unit = 'Idle'
-                        self._icon = SENSOR_TYPES[self.type][2]
-
-            elif self.type == 'rel_mod_level':
-                if 'rel_mod_level' in details and 'min_mod_level' in details and 'boiler_status' in status:
-                    if int(status["boiler_status"]) > 0:
-                        mml = int(details["min_mod_level"])
-                        rml = int(details["rel_mod_level"])
-                        self._state = (mml + (1 - mml)) * rml
-                    else:
-                        self._state = 0
-
-            elif self.type == 'boiler_config':
-                if 'boiler_config' in status:
-                    self._state = float(status["boiler_config"])
-
-            elif self.type == 'burning_hours':
-                if 'burning_hours' in status:
-                    self._state = float(status["burning_hours"])
-
-            elif self.type == 'voltage':
-                if 'voltage' in status:
-                    self._state = float(status["voltage"])
-
-            elif self.type == 'current':
-                if 'current' in status:
-                    self._state = float(status["current"])
-        else:
-            _LOGGER.error("Could not update Atag ONE sensor '" + self.type + "'")
-                
+    async def async_update(self):
+        """Update Entity
+        Only used by the generic entity update service."""
+        await self.coordinator.async_request_refresh()

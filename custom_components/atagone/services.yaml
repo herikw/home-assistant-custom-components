@@ -1,0 +1,36 @@
+create_vacation:
+  description: >-
+    Create a vacation on the selected thermostat. Note: start/end date and time must all be specified
+    together for these parameters to have an effect. If start/end date and time are not specified, the
+    vacation will start immediately and last 14 days (unless deleted earlier).
+  fields:
+    entity_id:
+      description: Atag One thermostat on which to create the vacation (required).
+      example: "climate.atag_one"
+    heat_temp:
+      description: Heating temperature during the vacation (required).
+      example: 18
+    start_date:
+      description: >-
+        Date the vacation starts in the YYYY-MM-DD format (optional, immediately if not provided along with
+        start_time, end_date, and end_time).
+      example: "'2020-06-15'"
+    start_time:
+      description: Time the vacation starts, in the local time of the thermostat, in the 24-hour format "HH:MM:SS"
+      example: "'20:00:00'"
+    end_date:
+      description: >-
+        Date the vacation ends in the YYYY-MM-DD format (optional, 14 days from now if not provided along with
+        start_date, start_time, and end_time).
+      example: "'2020-06-20'"
+    end_time:
+      description: Time the vacation ends, in the local time of the thermostat, in the 24-hour format "HH:MM:SS"
+      example: "'20:00:00'"
+
+delete_vacation:
+  description: >-
+    Delete a vacation on the selected thermostat.
+  fields:
+    entity_id:
+      description: Atag One thermostat on which to delete the vacation (required).
+      example: "climate.atag_one"
