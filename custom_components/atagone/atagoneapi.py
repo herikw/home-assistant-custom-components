@@ -118,6 +118,10 @@ class AtagOneApi(object):
 
         json_payload = PAIR_MESSAGE.format(MAC_ADDRESS)
         resp = self._send_request(PAIR_PATH, json_payload)
+        if not resp:
+            self.paired = False
+            return
+
         data = resp["pair_reply"]
         status = data["acc_status"]
         if status == 2:
@@ -229,6 +233,9 @@ class AtagOneApi(object):
 
         json_payload = UPDATE_VACATION.format(MAC_ADDRESS, start_dt_epoch, 18, duration)
         resp = self._send_request(UPDATE_PATH, json_payload)
+        if not resp:
+            return False
+
         status = resp["update_reply"]["acc_status"]
         if status != 2:
             _LOGGER.error("Create Vacation: %s", resp)
@@ -240,6 +247,9 @@ class AtagOneApi(object):
         """ cancel vacation on the Atag One """
         json_payload = CANCEL_VACATION.format(MAC_ADDRESS, 0, 0, 0)
         resp = self._send_request(UPDATE_PATH, json_payload)
+        if not resp:
+            return False
+
         status = resp["update_reply"]["acc_status"]
         if status != 2:
             _LOGGER.debug("Create Vacation: %s", resp)
