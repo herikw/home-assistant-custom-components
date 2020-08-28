@@ -175,6 +175,10 @@ class AtagOneApi(object):
     def sensors(self):
         """ Get all sensors from the report data """
         sensors = {}
+
+        if not self.data:
+            return sensors
+
         for sensor in self.reportdata:
             if sensor == "details":
                 continue
@@ -268,7 +272,7 @@ class AtagOneApi(object):
         jsonpayload = UPDATE_TEMP.format(MAC_ADDRESS, preset)
         resp = self._send_request(UPDATE_PATH, jsonpayload)
         if not resp:
-            return
+            return None
 
         data = resp["update_reply"]
         status = data["acc_status"]
@@ -303,7 +307,7 @@ class AtagOneApi(object):
 
         resp = self._send_request(READ_PATH, json_payload)
         if not resp:
-            return
+            return None
 
         self.data = resp["retrieve_reply"]
         status = self.data["acc_status"]
