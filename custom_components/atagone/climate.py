@@ -187,7 +187,7 @@ class AtagOneThermostat(ClimateEntity):
         """Update unit attributes."""
 
         status = self.data.update()
-        if not status:
+        if status == None:
             return
 
         self._current_setpoint = self.data.current_setpoint
