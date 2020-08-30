@@ -165,7 +165,7 @@ class AtagOneApi(object):
     @property
     def current_temp(self):
         """Return current temp"""
-        if self.reportdata:
+        if self.data:
             return self.reportdata.get("room_temp", 0)
         else:
             return 0
@@ -173,7 +173,7 @@ class AtagOneApi(object):
     @property
     def preset(self):
         """Return preset"""
-        if self.controldata:
+        if self.data:
             return self.controldata.get("ch_mode", 0)
         else:
             return 0
