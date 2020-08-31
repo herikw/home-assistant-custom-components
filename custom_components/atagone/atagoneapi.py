@@ -118,6 +118,10 @@ class AtagOneApi(object):
 
         json_payload = PAIR_MESSAGE.format(MAC_ADDRESS)
         resp = self._send_request(PAIR_PATH, json_payload)
+        if not resp:
+            self.paired = False
+            return
+
         data = resp["pair_reply"]
         status = data["acc_status"]
         if status == 2:
@@ -161,16 +165,27 @@ class AtagOneApi(object):
     @property
     def current_temp(self):
         """Return current temp"""
-        return self.reportdata.get("room_temp", 0)
+        if self.data:
+            return self.reportdata.get("room_temp", 0)
+        else:
+            return 0
 
     @property
     def preset(self):
-        return self.controldata.get("ch_mode", 0)
+        """Return preset"""
+        if self.data:
+            return self.controldata.get("ch_mode", 0)
+        else:
+            return 0
 
     @property
     def sensors(self):
         """ Get all sensors from the report data """
         sensors = {}
+
+        if not self.data:
+            return sensors
+
         for sensor in self.reportdata:
             if sensor == "details":
                 continue
@@ -229,6 +244,9 @@ class AtagOneApi(object):
 
         json_payload = UPDATE_VACATION.format(MAC_ADDRESS, start_dt_epoch, 18, duration)
         resp = self._send_request(UPDATE_PATH, json_payload)
+        if not resp:
+            return False
+
         status = resp["update_reply"]["acc_status"]
         if status != 2:
             _LOGGER.error("Create Vacation: %s", resp)
@@ -240,6 +258,9 @@ class AtagOneApi(object):
         """ cancel vacation on the Atag One """
         json_payload = CANCEL_VACATION.format(MAC_ADDRESS, 0, 0, 0)
         resp = self._send_request(UPDATE_PATH, json_payload)
+        if not resp:
+            return False
+
         status = resp["update_reply"]["acc_status"]
         if status != 2:
             _LOGGER.debug("Create Vacation: %s", resp)
@@ -258,7 +279,7 @@ class AtagOneApi(object):
         jsonpayload = UPDATE_TEMP.format(MAC_ADDRESS, preset)
         resp = self._send_request(UPDATE_PATH, jsonpayload)
         if not resp:
-            return
+            return None
 
         data = resp["update_reply"]
         status = data["acc_status"]
@@ -293,7 +314,7 @@ class AtagOneApi(object):
 
         resp = self._send_request(READ_PATH, json_payload)
         if not resp:
-            return
+            return None
 
         self.data = resp["retrieve_reply"]
         status = self.data["acc_status"]
