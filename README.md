@@ -40,17 +40,6 @@ You will now see the component displayed in the integration dashboard.
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/details.png?raw=true "Screenshot")
 
-
-## ATAG One Thermostat Sensor Component
-It reads the ATAG ONE thermostat report data and display these as sensors in HA
-
-### Installation
-* If not exist, in ha_config_dir/custom_components/ create a directory called atagone 
-* Copy all files in atagone to your ha_config_dir/custom_components/atagone/ directory.
-* If your are using hasio on docker: Copy all files in atagone to /usr/share/hassio/homeassistant/custom_components/atagone/
-* Configure with config below.
-* Restart Home-Assistant.
-
 ## ATAG One Thermostat Sensor Component
 It reads the ATAG ONE thermostat report data and display these as sensors in HA
 Initially it will deploy 51 sensors which can be disabled if a sensor is not needed
