@@ -27,10 +27,10 @@ create_vacation:
       description: Time the vacation ends, in the local time of the thermostat, in the 24-hour format "HH:MM:SS"
       example: "'20:00:00'"
 
-delete_vacation:
+cancel_vacation:
   description: >-
-    Delete a vacation on the selected thermostat.
+    Cance; a vacation on the selected thermostat.
   fields:
     entity_id:
-      description: Atag One thermostat on which to delete the vacation (required).
+      description: Atag One thermostat on which to cancel the vacation (required).
       example: "climate.atag_one"

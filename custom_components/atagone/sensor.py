@@ -3,146 +3,110 @@ Adds Support for Atag One Thermostat
 
 Author: herikw
 https://github.com/herikw/home-assistant-custom-components
-Added other report fields
 
-Configuration for this platform:
-
-sensor:
-  - platform: atagone
-    [host: IP_ADDRESS]
-    port: 10000
-    scan_interval: 10
-    resources:
-      - room_temp
-      - outside_temp
-      - avg_outside_temp
-      - pcb_temp
-      - ch_setpoint
-      - ch_water_pressure
-      - ch_water_temp
-      - ch_return_temp
-      - dhw_water_temp
-      - dhw_water_pres
-      - boiler_status
-      - boiler_config
-      - burning_hours
-      - voltage
-      - current
-      - rel_mod_level
 """
 
 from datetime import timedelta
-import voluptuous as vol
 import async_timeout
 
-from .atagoneapi import AtagOneApi
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-
-from homeassistant.components.sensor import PLATFORM_SCHEMA
-import homeassistant.helpers.config_validation as config_validation
-from homeassistant.const import (
-    CONF_HOST,
-    CONF_PORT,
-    CONF_RESOURCES,
-    CONF_NAME,
-)
-
 from homeassistant.helpers.entity import Entity
 
-from .const import DEFAULT_NAME, _LOGGER
+from .const import DEFAULT_NAME, DOMAIN, _LOGGER
+
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.const import (
+    PERCENTAGE,
+    PRESSURE_BAR,
+    TEMP_CELSIUS,
+    TEMP_FAHRENHEIT,
+    TIME_HOURS,
+    ELECTRIC_CURRENT_MILLIAMPERE,
+    ELECTRIC_POTENTIAL_VOLT,
+)
 
 MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 
 SENSOR_TYPES = {
+    "burning_hours": ["Burning Hours", "h", "mdi:hours-24"],
+    "device_errors": ["Device Errors", "", "mdi:alert"],
+    "boiler_errors": ["Boiler Errors", "", "mdi:alert"],
     "room_temp": ["Room Temp", "°C", "mdi:thermometer"],
     "outside_temp": ["Outside Temp", "°C", "mdi:thermometer"],
-    "avg_outside_temp": ["Average Outside Temp", "°C", "mdi:thermometer"],
+    "dbg_outside_temp": ["Dbg Outside Temp", "°C", "mdi:thermometer"],
     "pcb_temp": ["PCB Temp", "°C", "mdi:thermometer"],
     "ch_setpoint": ["Central Heating Setpoint", "°C", "mdi:thermometer"],
-    "ch_water_pressure": ["Central Heating Water Pressure", "Bar", "mdi:gauge"],
-    "ch_water_temp": ["Central Heating Water Temp", "°C", "mdi:thermometer"],
-    "ch_return_temp": ["Central Heating Return Temp", "°C", "mdi:thermometer"],
     "dhw_water_temp": ["Hot Water Temp", "°C", "mdi:thermometer"],
+    "ch_water_temp": ["Central Heating Water Temp", "°C", "mdi:thermometer"],
     "dhw_water_pres": ["Hot Water Pressure", "Bar", "mdi:gauge"],
-    "boiler_status": ["Boiler Status", "", "mdi:flash"],
-    "boiler_config": ["Boiler Config", "", "mdi:flash"],
-    "burning_hours": ["Burning Hours", "h", "mdi:fire"],
-    "voltage": ["Voltage", "V", "mdi:flash"],
-    "current": ["Current", "mA", "mdi:flash-auto"],
+    "ch_water_pressure": ["Central Heating Water Pressure", "Bar", "mdi:gauge"],
+    "ch_return_temp": ["Central Heating Return Temp", "°C", "mdi:thermometer"],
+    "boiler_status": ["Boiler Status", "", "mdi:water-boiler"],
+    "boiler_config": ["Boiler Config", "", "mdi:water-boiler"],
+    "ch_time_to_temp": ["Central Heating Time to Temp", "", "mdi:flash"],
+    "shown_set_temp": ["Show Set Temp", "°C", "mdi:thermometer"],
+    "power_cons": ["Power Consumption", "", "mdi:flash"],
+    "avg_outside_temp": ["Average Outside Temp", "°C", "mdi:thermometer"],
+    "rssi": ["RSSI", "°C", "mdi:thermometer"],
+    "current": ["Current", "mA", "mdi:current-dc"],
+    "voltage": ["Voltage", "V", "mdi:current-dc"],
+    "charge_status": ["Charge Status", "", "mdi:flash"],
+    "lmuc_burner_starts": ["lmuc_burner_starts", "", "mdi:flash"],
+    "dhw_flow_rate": ["hw_flow_rate", "", "mdi:water-boiler"],
+    "resets": ["Resets", "", "mdi:flash"],
+    "memory_allocation": ["Memory Allocation", "", "mdi:memory"],
+    "boiler_temp": ["Boiler Temp", "°C", "mdi:thermometer"],
+    "boiler_return_temp": ["Boiler Return Temp", "°C", "mdi:thermometer"],
+    "min_mod_level": ["Min Mod Level", "", "mdi:thermometer"],
     "rel_mod_level": ["Burner", "%", "mdi:fire"],
+    "boiler_capacity": ["Boiler Capacity", "", "mdi:water-boiler"],
+    "target_temp": ["Target Temp", "°C", "mdi:thermometer"],
+    "overshoot": ["Overshoot", "°C", "mdi:thermometer"],
+    "max_boiler_temp": ["Max Boiler Temp", "°C", "mdi:thermometer"],
+    "regulation_state": ["Regulation State", "", "mdi:flash"],
+    "ch_status": ["CH State", "", "mdi:flash"],
+    "ch_control_mode": ["CH Control Mode", "", "mdi:flash"],
+    "ch_mode": ["CH Mode", "", "mdi:flash"],
+    "ch_mode_duration": ["CH Mode Duration", "", "mdi:flash"],
+    "ch_mode_temp": ["CH Mode Temp", "°C", "mdi:thermometer"],
+    "dhw_temp_setp": ["DHW Temp Setpoint", "°C", "mdi:thermometer"],
+    "dhw_status": ["DHW Status", "", "mdi:water-boiler"],
+    "dhw_mode": ["DHW Mode", "", "mdi:water-boiler"],
+    "dhw_mode_temp": ["DHW Mode Temp", "°C", "mdi:thermometer"],
+    "weather_temp": ["Weather Temp", "°C", "mdi:thermometer"],
+    "weather_status": ["Weather Status", "", "mdi:weather-sunny"],
+    "vacation_duration": ["Vacation Duration", "", "mdi:hours-24"],
+    "extend_duration": ["Extended Duration", "", "mdi:hours-24"],
+    "fireplace_duration": ["Fireplace Duration", "", "mdi:hours-24"],
 }
 
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): config_validation.string,
-        vol.Optional(CONF_HOST): config_validation.string,
-        vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
-        vol.Required(CONF_RESOURCES, default=[]): vol.All(
-            config_validation.ensure_list, [vol.In(SENSOR_TYPES)]
-        ),
-    }
-)
 
-
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Setup the Atag One sensors."""
-
-    api = AtagOneApi(config.get(CONF_PORT), config.get(CONF_HOST))
-
-    async def async_update_data():
-        """ fetch data from the Atag API wrapper"""
-        async with async_timeout.timeout(10):
-            data = await hass.async_add_executor_job(api.fetch_data)
-            return data
-
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name="atag_one_sensor",
-        update_method=async_update_data,
-        # Polling interval. Will only be polled if there are subscribers.
-        update_interval=timedelta(seconds=30),
-    )
-
-    # Fetch initial data so we have data when entities subscribe
-    await coordinator.async_refresh()
-
-    entities = []
-    sensor_prefix = config.get(CONF_NAME)
-
-    for resource in config[CONF_RESOURCES]:
-        sensor_type = resource.lower()
-
-        if sensor_type not in SENSOR_TYPES:
-            SENSOR_TYPES[sensor_type] = [sensor_type.title(), "", "mdi:flash"]
-
-        entities.append(AtagOneSensor(coordinator, sensor_type, sensor_prefix))
-
-    async_add_entities(entities)
+async def async_setup_entry(hass, config_entry, async_add_entities):
+    """Initialize sensor platform from config entry."""
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    async_add_entities([AtagOneSensor(coordinator, sensor) for sensor in SENSOR_TYPES])
 
 
 class AtagOneSensor(Entity):
     """Representation of a AtagOne Sensor."""
 
-    def __init__(self, coordinator, sensor_type, sensor_prefix):
+    def __init__(self, coordinator, sensor):
         """Initialize the sensor."""
+
         self.coordinator = coordinator
-        self.type = sensor_type
-        self._last_updated = None
-        self._sensor_prefix = sensor_prefix
+        self.type = sensor
+        self._sensor_prefix = DEFAULT_NAME
         self._entity_type = SENSOR_TYPES[self.type][0]
-        self._name = "{} {}".format(sensor_prefix, SENSOR_TYPES[self.type][0])
+        self._name = "{} {}".format(self._sensor_prefix, SENSOR_TYPES[self.type][0])
         self._unit = SENSOR_TYPES[self.type][1]
         self._icon = SENSOR_TYPES[self.type][2]
-        self._state = self.state
 
     def boiler_status(self, state):
-        """ boiler status conversions """
+        """boiler status conversions"""
         state = state & 14
-        _LOGGER.debug(state)
         if state == 8:
             self._unit = "Boiler"
-            self._icon = "mdi:fire"
+            self._icon = "mdi:water-boiler"
         elif state == 10:
             self._unit = "Central"
             self._icon = "mdi:fire"
@@ -192,7 +156,7 @@ class AtagOneSensor(Entity):
     def state(self):
         """Return the state of the sensor."""
         try:
-            state = self.coordinator.data[self.type]
+            state = self.coordinator.data.sensors[self.type]
             if state:
                 if self.type == "boiler_status":
                     return self.boiler_status(state)
@@ -210,12 +174,4 @@ class AtagOneSensor(Entity):
     @property
     def device_state_attributes(self):
         """Return the state attributes of this device."""
-        attr = {}
-        if self._last_updated is not None:
-            attr["Last Updated"] = self._last_updated
-        return attr
-
-    async def async_update(self):
-        """Update Entity
-        Only used by the generic entity update service."""
-        await self.coordinator.async_request_refresh()
+        pass

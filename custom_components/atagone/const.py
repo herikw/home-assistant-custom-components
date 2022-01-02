@@ -11,13 +11,23 @@ BASE_URL = "http://{0}:{1}{2}"
 MAC_ADDRESS = "01:23:45:67:89:01"
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 27
-
-ATAGONE_PLATFORMS = ["climate", "sensor"]
-
+DEFAULT_PORT = 10000
 
 """ jsonPayload data templates
     update payload need to be in exact order. So, using string instead of json.dumps
 """
+
+RETR_MODE = """{{
+    "retrieve_message":{{
+        "seqnr":0,
+        "account_auth":{{
+            "user_account":"",
+            "mac_address":"{0}",
+        }},
+        "info":{1}
+    }}
+}}"""
+
 UPDATE_MODE = """{{
     "update_message":{{
         "seqnr":0,
@@ -108,4 +118,3 @@ PAIR_MESSAGE = """{{
         }}
     }}
 }}"""
-

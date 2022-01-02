@@ -1,5 +1,5 @@
 """
-Adds Support for Atag One Thermostat
+Atag API wrapper for ATAG One Custom Component
 
 Author: herikw
 https://github.com/herikw/home-assistant-custom-components
@@ -7,15 +7,19 @@ https://github.com/herikw/home-assistant-custom-components
 
 from datetime import datetime, timedelta
 import voluptuous as vol
-import json
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
+import aiohttp
+import asyncio
+import atexit
+import logging
+
+from urllib.error import HTTPError
 from time import mktime, strptime
-from http.client import HTTPException
+from http import HTTPStatus
 
 from socket import AF_INET, SOCK_DGRAM, SO_REUSEADDR, SOL_SOCKET, socket, timeout
 
 from .const import (
+    RETR_MODE,
     UPDATE_MODE,
     UPDATE_TEMP,
     UPDATE_VACATION,
@@ -30,28 +34,40 @@ READ_PATH = "/retrieve"
 UPDATE_PATH = "/update"
 PAIR_PATH = "/pair_message"
 MESSAGE_INFO_CONTROL = 1
+MESSAGE_INFO_SCHEDULES = 2
+MESSAGE_INFO_CONFIGURATION = 4
 MESSAGE_INFO_REPORT = 8
+MESSAGE_INFO_STATUS = 16
+MESSAGE_INFO_WIFISCAN = 32
 MESSAGE_INFO_EXTRA = 64
+MESSAGE_INFO_REPORT_DETAILS = 64
+
+_LOGGER = logging.getLogger("atagoneapi")
+_LOGGER.setLevel(logging.DEBUG)
 
 
 class AtagOneApi(object):
-    """ Wrapper class to the Atag One API """
+    """Wrapper class to the Atag One API"""
 
-    def __init__(self, port, host=None):
+    def __init__(self, host=None, port=10000):
         self.data = None
         self.paired = False
         self.heating = False
         self.current_operation = ""
         self._port = port
         self._host = host
+        self.client = None
+
+        _LOGGER.debug("Open connection")
+        self._session = aiohttp.ClientSession()
+        atexit.register(self._close)
 
         if self._host is None:
             self._host = self._find_ip()
 
-    def _find_ip(self):
+    def _find_ip(self) -> str:
         """Find the ATAG One Thermostat on the local network"""
 
-        _LOGGER.info("find ATAG old ip: %s", self._host)
         s_connection = socket(AF_INET, SOCK_DGRAM)
         s_connection.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         s_connection.settimeout(60)
@@ -62,95 +78,52 @@ class AtagOneApi(object):
                 data, (addr, bport) = s_connection.recvfrom(37, 0)
                 if ("ONE " in str(data)) and (addr):
                     s_connection.close()
-                    _LOGGER.info("find ATAG new ip: %s", str(addr))
+                    _LOGGER.warning("find ATAG new ip: %s", str(addr))
                     return str(addr)
         except HTTPError:
-            _LOGGER.info("timeout exceeded finding ATAG One")
+            _LOGGER.warning("timeout exceeded finding ATAG One")
             return self._host
         except timeout:
-            _LOGGER.info("find ATAG One Timeout")
+            _LOGGER.warning("find ATAG One Timeout")
             return self._host
 
-    def _atag_datetime(self, localtime):
-        """ Convert Atage dattime in seconds since 2000 epoch to datetime object - 2020-02-25 19:59:43 """
+    def _atag_datetime(self, localtime) -> datetime:
+        """Convert Atage dattime in seconds since 2000 epoch to datetime object - 2020-02-25 19:59:43"""
 
         return datetime(2000, 1, 1) + timedelta(seconds=localtime)
 
-    def _datetime_atag(self, dtstring):
-        """ Convert datatime string to atag datetime (seconds since 1/1/2000) """
+    def _datetime_atag(self, dtstring) -> int:
+        """Convert datatime string to atag datetime (seconds since 1/1/2000)"""
 
         seconds_epoch = mktime(datetime(2000, 1, 1).timetuple())
         return int(mktime(strptime(str(dtstring), "%Y-%m-%d %H:%M:%S")) - seconds_epoch)
 
-    def _send_request(self, request_path, json_payload):
-        """Send the request to the thermostat"""
+    @property
+    def id(self):
+        """Return the ID of the Atag One."""
+        if not self.data:
+            return None
 
-        for i in range(3):
-            try:
-                req = Request(
-                    BASE_URL.format(self._host, self._port, request_path),
-                    data=str.encode(json_payload),
-                )
-                with urlopen(req, timeout=60) as result:
-                    resp = json.loads(result.read().decode("utf-8"))
-                    return resp
-
-            except HTTPError as http_err:
-                if http_err.code == 404:
-                    _LOGGER.info("Atag One not found: %s Trying to find...", self._host)
-                    self._host = self._find_ip()
-                else:
-                    _LOGGER.error("Atag ONE api error")
-                    continue
-            except HTTPException as http_ex:
-                _LOGGER.info("Atag one disconnected %s", str(http_ex))
-            except URLError as url_ex:
-                _LOGGER.info("Atag one timeout %s", str(url_ex))
-            except ConnectionResetError as cr_ex:
-                _LOGGER.info("Atag one connection reset %s", str(cr_ex))
-            except ConnectionAbortedError as ca_ex:
-                _LOGGER.info("Atag one connection abort %s", str(ca_ex))
-
-        return None
-
-    def _pair_atag(self):
-        """Pair the Thermostat"""
-
-        json_payload = PAIR_MESSAGE.format(MAC_ADDRESS)
-        resp = self._send_request(PAIR_PATH, json_payload)
-        data = resp["pair_reply"]
-        status = data["acc_status"]
-        if status == 2:
-            self.paired = True
-            return
-        elif status == 1:
-            self.paired = True
-            _LOGGER.error("Waiting for pairing confirmation")
-        elif status == 3:
-            _LOGGER.error("Waiting for pairing confirmation")
-        elif status == 0:
-            _LOGGER.error("No status returned from ATAG One")
-
-        self.paired = False
+        return self.reportdata.get("device_id")
 
     @property
     def reportdata(self):
-        """Return Report Json Data """
+        """Return Report Json Data"""
         return self.data["report"]
 
     @property
     def controldata(self):
-        """Return Control Json Data """
+        """Return Control Json Data"""
         return self.data["control"]
 
     @property
     def scheduledata(self):
-        """Return Schedules Json Data """
+        """Return Schedules Json Data"""
         return self.data["schedules"]
 
     @property
     def configurationdata(self):
-        """Return Configuration Json Data """
+        """Return Configuration Json Data"""
         return self.data["configuration"]
 
     @property
@@ -169,7 +142,7 @@ class AtagOneApi(object):
 
     @property
     def sensors(self):
-        """ Get all sensors from the report data """
+        """Get all sensors from the report data"""
         sensors = {}
         for sensor in self.reportdata:
             if sensor == "details":
@@ -186,6 +159,9 @@ class AtagOneApi(object):
         for sensor in self.reportdata["details"]:
             sensors[sensor] = self.reportdata["details"].get(sensor, 0)
 
+        for sensor in self.controldata:
+            sensors[sensor] = self.controldata.get(sensor, 0)
+
         sensors["rel_mod_level"] = self.rel_mod_level
         sensors["voltage"] = self.voltage
 
@@ -193,7 +169,7 @@ class AtagOneApi(object):
 
     @property
     def rel_mod_level(self):
-        """ Calculate the burner level in % """
+        """Calculate the burner level in %"""
 
         if int(self.reportdata.get("boiler_status", 0)) > 0:
             mml = int(self.reportdata["details"].get("min_mod_level", 0))
@@ -204,15 +180,20 @@ class AtagOneApi(object):
 
     @property
     def voltage(self):
-        """ convert Voltage mV into V """
+        """convert Voltage mV into V"""
         voltage = int(self.reportdata.get("voltage", 0))
         if voltage > 1000:
             return voltage / 1000
 
         return voltage
 
-    def create_vacation(self, start_date, start_time, end_date, end_time, heat_temp):
-        """ create vacation on the Atag One """
+    async def async_create_vacation(
+        self, start_date, start_time, end_date, end_time, heat_temp
+    ) -> bool:
+        """create vacation on the Atag One"""
+
+        _LOGGER.debug("create_vacation")
+
         if not start_date and not start_time and not end_date and not end_time:
             start_dt_epoch = self._datetime_atag(
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -227,8 +208,10 @@ class AtagOneApi(object):
 
         duration = end_dt_epoch - start_dt_epoch
 
-        json_payload = UPDATE_VACATION.format(MAC_ADDRESS, start_dt_epoch, 18, duration)
-        resp = self._send_request(UPDATE_PATH, json_payload)
+        json_payload = UPDATE_VACATION.format(
+            MAC_ADDRESS, start_dt_epoch, float(heat_temp), duration
+        )
+        resp = await self._async_send_request(UPDATE_PATH, json_payload)
         status = resp["update_reply"]["acc_status"]
         if status != 2:
             _LOGGER.error("Create Vacation: %s", resp)
@@ -236,10 +219,12 @@ class AtagOneApi(object):
 
         return True
 
-    def cancel_vacation(self):
-        """ cancel vacation on the Atag One """
+    async def async_cancel_vacation(self) -> bool:
+        """cancel vacation on the Atag One"""
+
+        _LOGGER.debug("cancel_vacation")
         json_payload = CANCEL_VACATION.format(MAC_ADDRESS, 0, 0, 0)
-        resp = self._send_request(UPDATE_PATH, json_payload)
+        resp = await self._async_send_request(UPDATE_PATH, json_payload)
         status = resp["update_reply"]["acc_status"]
         if status != 2:
             _LOGGER.debug("Create Vacation: %s", resp)
@@ -247,70 +232,70 @@ class AtagOneApi(object):
 
         return True
 
-    def set_temperature(self, target_temp):
-        """ Set new target temperature. """
+    async def async_set_temperature(self, target_temp) -> bool:
+        """Set new target temperature."""
+
+        _LOGGER.debug("async_set_temperature")
 
         try:
-            preset = int(target_temp)
+            preset = float(target_temp)
         except ValueError:
             raise vol.Invalid("Invalid target temperature")
 
         jsonpayload = UPDATE_TEMP.format(MAC_ADDRESS, preset)
-        resp = self._send_request(UPDATE_PATH, jsonpayload)
+
+        resp = await self._async_send_request(UPDATE_PATH, jsonpayload)
         if not resp:
-            return
+            return False
 
         data = resp["update_reply"]
         status = data["acc_status"]
         if status != 2:
             _LOGGER.debug("Request Status: %s", status)
+            return False
 
-        return status
+        return True
 
-    def fetch_data(self):
+    async def async_fetch_data(self) -> dict:
         """Get state of all sensors and do some conversions"""
 
-        self.update()
+        _LOGGER.debug("async_fetch_data")
+
+        await self.async_update()
         return self.sensors
 
-    def update(self):
-        """Get unit attributes."""
+    async def async_update(self) -> bool:
+        """Report Data"""
 
-        json_payload = json.dumps(
-            {
-                "retrieve_message": {
-                    "seqnr": 0,
-                    "account_auth": {
-                        "user_account": "",
-                        "mac_address": "01:23:45:67:89:01",
-                    },
-                    "info": MESSAGE_INFO_CONTROL
-                    + MESSAGE_INFO_REPORT
-                    + MESSAGE_INFO_EXTRA,
-                }
-            }
+        _LOGGER.debug("async_update")
+        json_payload = RETR_MODE.format(
+            MAC_ADDRESS, MESSAGE_INFO_CONTROL + MESSAGE_INFO_REPORT + MESSAGE_INFO_EXTRA
         )
 
-        resp = self._send_request(READ_PATH, json_payload)
+        resp = await self._async_send_request(READ_PATH, json_payload)
         if not resp:
-            return
+            return False
 
         self.data = resp["retrieve_reply"]
         status = self.data["acc_status"]
         if status != 2:
-            self._pair_atag()
+            await self.async_pair_atag()
             _LOGGER.error("Please accept pairing request on Atag ONE Device")
+            return False
 
         status = int(self.data["report"].get("boiler_status")) & 14
         if status == 10:
             self.heating = True
         else:
             self.heating = False
-        return status
 
-    def set_preset_mode(self, preset_mode=None):
-        """ Set a new preset mode. If preset_mode is None, then revert to auto.
-            1:Manual, 2:Auto, 3:Vacation, 5:Fireplace """
+        return True
+
+    async def async_set_preset_mode(self, preset_mode=None) -> bool:
+        """Set a new preset mode. If preset_mode is None, then revert to auto.
+        1:Manual, 2:Auto, 3:Vacation, 5:Fireplace"""
+
+        _LOGGER.debug("async_set_preset_mode")
         try:
             preset = int(preset_mode)
         except ValueError:
@@ -319,12 +304,65 @@ class AtagOneApi(object):
             )
 
         json_payload = UPDATE_MODE.format(MAC_ADDRESS, preset)
-        resp = self._send_request(UPDATE_PATH, json_payload)
+        resp = await self._async_send_request(UPDATE_PATH, json_payload)
         self.data = resp["update_reply"]
         status = self.data["acc_status"]
-
         if status != 2:
             _LOGGER.debug("Request Status: %s", status)
+            return False
 
-        return status
+        return True
 
+    async def _async_send_request(self, request_path, json_payload):
+        """send async web request"""
+
+        _LOGGER.debug("_async_send_request")
+
+        client_timeout = aiohttp.ClientTimeout(total=60, connect=30)
+        tries = 0
+        while tries < 3:
+            try:
+                async with self._session.post(
+                    BASE_URL.format(self._host, self._port, request_path),
+                    data=str.encode(json_payload),
+                    timeout=client_timeout,
+                ) as resp:
+                    response = await resp.json()
+                    return response
+            except (
+                aiohttp.ClientConnectorError,
+                asyncio.TimeoutError,
+            ) as ex:
+                _LOGGER.error(
+                    "Atag connection error %s",
+                    str(ex),
+                )
+            tries += 1
+
+        return None
+
+    async def async_pair_atag(self) -> None:
+        """Pair the Thermostat"""
+
+        _LOGGER.debug("async_pair_atag")
+
+        json_payload = PAIR_MESSAGE.format(MAC_ADDRESS)
+        resp = await self._async_send_request(PAIR_PATH, json_payload)
+        data = resp["pair_reply"]
+        status = data["acc_status"]
+        if status == 2:
+            self.paired = True
+            return
+        elif status == 1:
+            self.paired = True
+            _LOGGER.error("Waiting for pairing confirmation")
+        elif status == 3:
+            _LOGGER.error("Waiting for pairing confirmation")
+        elif status == 0:
+            _LOGGER.error("No status returned from ATAG One")
+
+        self.paired = False
+
+    def _close(self) -> None:
+        _LOGGER.debug("closing connection")
+        asyncio.run(self._session.close())

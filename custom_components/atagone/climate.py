@@ -4,23 +4,21 @@ Adds Support for Atag One Thermostat
 Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 
-Configuration for this platform:
-
-climate:
-  - platform: atagone
-    name: Atag One Thermostat
-    host: IP_ADDRESS
-    port: 10000
-    scan_interval: 10
 """
 
 import logging
+from typing import Any
 import voluptuous as vol
 
 from .util import atag_date, atag_time
-from .atagoneapi import AtagOneApi
+from . import AtagOneEntity
 
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import ServiceCall
 from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
+from homeassistant.helpers import config_validation
+
 from homeassistant.components.climate.const import (
     SUPPORT_TARGET_TEMPERATURE,
     SUPPORT_PRESET_MODE,
@@ -47,8 +45,6 @@ from .const import (
     DEFAULT_NAME,
 )
 
-import homeassistant.helpers.config_validation as config_validation
-
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -66,8 +62,7 @@ ATTR_START_DATE = "start_date"
 ATTR_START_TIME = "start_time"
 
 SERVICE_CREATE_VACATION = "create_vacation"
-SERVICE_DELETE_VACATION = "delete_vacation"
-SERVICE_RESUME_PROGRAM = "resume_program"
+SERVICE_CANCEL_VACATION = "cancel_vacation"
 
 DEFAULT_RESUME_ALL = False
 PRESET_VACATION = "Vacation"
@@ -94,39 +89,45 @@ CREATE_VACATION_SCHEMA = vol.Schema(
     }
 )
 
-DELETE_VACATION_SCHEMA = vol.Schema(
-    {vol.Required(ATTR_ENTITY_ID): config_validation.entity_id,}
+CANCEL_VACATION_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_ENTITY_ID): config_validation.entity_id,
+    }
 )
 
 SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
 
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Setup the Atag One Device"""
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+) -> None:
+    """Setup Atag One Thermostat"""
 
-    api = AtagOneApi(config.get(CONF_PORT), config.get(CONF_HOST))
-    await hass.async_add_executor_job(api.update)
+    entities = []
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    entities.append(AtagOneThermostat(coordinator, "climate"))
 
-    entities = [AtagOneThermostat(api)]
-    async_add_entities(entities, True)
+    async_add_entities(entities)
 
-    def create_vacation_service(service):
+    @callback
+    async def create_vacation_service(service: ServiceCall) -> None:
         """Create a vacation on the target thermostat."""
         entity_id = service.data[ATTR_ENTITY_ID]
 
         for thermostat in entities:
             if thermostat.entity_id == entity_id:
-                thermostat.create_vacation(service.data)
+                await thermostat.create_vacation(service.data)
                 thermostat.schedule_update_ha_state(True)
                 break
 
-    def delete_vacation_service(service):
-        """Delete a vacation on the target thermostat."""
+    @callback
+    async def cancel_vacation_service(service: ServiceCall) -> None:
+        """Cancel a vacation on the target thermostat."""
         entity_id = service.data[ATTR_ENTITY_ID]
 
         for thermostat in entities:
             if thermostat.entity_id == entity_id:
-                thermostat.delete_vacation()
+                await thermostat.cancel_vacation()
                 thermostat.schedule_update_ha_state(True)
                 break
 
@@ -139,39 +140,35 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     hass.services.async_register(
         DOMAIN,
-        SERVICE_DELETE_VACATION,
-        delete_vacation_service,
-        schema=DELETE_VACATION_SCHEMA,
+        SERVICE_CANCEL_VACATION,
+        cancel_vacation_service,
+        schema=CANCEL_VACATION_SCHEMA,
     )
 
 
-class AtagOneThermostat(ClimateEntity):
+class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     """Representation of a Atag One device"""
 
-    def __init__(self, data):
+    def __init__(self, coordinator, atagone_id) -> None:
+
         """Initialize"""
-        self.data = data
-        self._icon = "mdi:radiator"
+        super().__init__(coordinator, atagone_id)
+
+        self.data = atagone_id
+        self._icon = "mdi:thermostat"
         self._name = DEFAULT_NAME
         self._min_temp = DEFAULT_MIN_TEMP
         self._max_temp = DEFAULT_MAX_TEMP
-        self._current_temp = None
-        self._current_setpoint = None
-        self._paired = False
-        self._heating = False
-        self._preset = None
-        self._current_state = -1
-        self._current_operation = ""
 
     @property
-    def supported_features(self):
+    def supported_features(self) -> SUPPORT_FLAGS:
         """Return the list of supported features."""
         return SUPPORT_FLAGS
 
-    def create_vacation(self, service_data):
+    async def create_vacation(self, service_data) -> None:
         """Create a vacation with user-specified parameters."""
 
-        self.data.create_vacation(
+        await self.coordinator.data.async_create_vacation(
             service_data.get(ATTR_START_DATE),
             service_data.get(ATTR_START_TIME),
             service_data.get(ATTR_END_DATE),
@@ -179,120 +176,100 @@ class AtagOneThermostat(ClimateEntity):
             service_data.get(ATTR_HEAT_TEMP),
         )
 
-    def delete_vacation(self):
+    async def cancel_vacation(self) -> None:
         """Delete a vacation with the specified name."""
-        self.data.cancel_vacation()
-
-    def update(self):
-        """Update unit attributes."""
-
-        self.data.update()
-        self._current_setpoint = self.data.current_setpoint
-        self._current_operation = self.data.current_operation
-        self._current_temp = self.data.current_temp
-        self._preset = ATAG_PRESET_TO_HA.get(self.data.preset)
-        self._heating = self.data.heating
+        await self.coordinator.data.async_cancel_vacation()
 
     @property
-    def hvac_mode(self):
-        """Return hvac operation """
-        if self._heating:
+    def hvac_mode(self) -> str:
+        """Return hvac operation"""
+        if self.coordinator.data.heating:
             return HVAC_MODE_HEAT
         return HVAC_MODE_OFF
 
     @property
-    def hvac_modes(self):
-        """Return the list of available hvac operation modes. Need to be a subset of HVAC_MODES. """
+    def hvac_modes(self) -> list[str]:
+        """Return the list of available hvac operation modes. Need to be a subset of HVAC_MODES."""
         return [HVAC_MODE_HEAT]
 
-    def set_hvac_mode(self, hvac_mode):
-        """Set new target hvac mode."""
-        pass
+    @property
+    def current_temperature(self) -> float:
+        """Return the current temperature."""
+        return self.coordinator.data.current_temp
 
     @property
-    def hvac_action(self):
-        """Return the current running hvac operation if supported.  Need to be one of CURRENT_HVAC_*.  """
-        if self._heating:
+    def target_temperature(self) -> float:
+        """Return the temperature we try to reach."""
+        return self.coordinator.data.current_setpoint
+
+    @property
+    def hvac_action(self) -> str:
+        """Return the current running hvac operation if supported.  Need to be one of CURRENT_HVAC_*."""
+        if self.coordinator.data.heating:
             return CURRENT_HVAC_HEAT
         return CURRENT_HVAC_IDLE
 
     @property
-    def should_poll(self):
+    def should_poll(self) -> bool:
         """Return the polling state."""
         return True
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the name of the climate device."""
         return self._name
 
     @property
-    def unique_id(self):
+    def unique_id(self) -> str:
         """Return the unique ID of the binary sensor."""
         return self._name
 
     @property
-    def temperature_unit(self):
+    def temperature_unit(self) -> str:
         """Return the unit of measurement."""
         return TEMP_CELSIUS
 
     @property
-    def current_temperature(self):
-        """Return the current temperature."""
-        return self._current_temp
-
-    @property
-    def min_temp(self):
+    def min_temp(self) -> float:
         """Return the minimum temperature."""
         if self._min_temp:
             return self._min_temp
 
     @property
-    def max_temp(self):
+    def max_temp(self) -> float:
         """Return the maximum temperature."""
         if self._max_temp:
             return self._max_temp
 
     @property
-    def target_temperature(self):
-        """Return the temperature we try to reach."""
-        return self._current_setpoint
-
-    @property
-    def preset_mode(self):
+    def preset_mode(self) -> str:
         """Return the current preset mode, e.g., home, away, temp."""
-        return ATAG_PRESET_TO_HA.get(self.data.preset)
+        return ATAG_PRESET_TO_HA.get(self.coordinator.data.preset)
 
     @property
-    def preset_modes(self):
+    def preset_modes(self) -> list[str]:
         """Return a list of available preset modes."""
         return [PRESET_HOME, PRESET_AWAY, PRESET_VACATION]
 
-    def set_preset_mode(self, preset_mode):
+    async def async_set_hvac_mode(self, hvac_mode: str) -> None:
+        """Set new target hvac mode."""
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set a new preset mode. If preset_mode is None, then revert to auto."""
 
-        if self._preset == preset_mode:
-            return
-
         atag_preset = HA_PRESET_TO_ATAG.get(preset_mode, PRESET_HOME)
-        status = self.data.set_preset_mode(atag_preset)
-        if status == 2:
-            self._preset = preset_mode
-            return
+        _LOGGER.debug("set_preset_mode: %s", preset_mode)
+        status = await self.coordinator.data.async_set_preset_mode(atag_preset)
+        if not status:
+            _LOGGER.error("set_preset_mode: %s", status)
 
-        _LOGGER.error("Request Status: %s", status)
-
-    def set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
 
         target_temp = kwargs.get(ATTR_TEMPERATURE)
         if target_temp is None:
             return
         else:
-            status = self.data.set_temperature(target_temp)
-            if status != 2:
-                _LOGGER.error("Request Status: %s", status)
-
-            self.update()
-
-
+            status = await self.coordinator.data.async_set_temperature(target_temp)
+            if not status:
+                _LOGGER.error("set_temperature: %s", status)

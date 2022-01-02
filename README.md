@@ -7,26 +7,34 @@ Component to interface with the API of the ATAG One thermostat on the local netw
 It reads the Current Temperature and other parameters like central heating water pressure and outside temperature. It currently only supports Heating as operation mode.
 
 ### Installation
-* If not exist, in ha_config_dir/custom_components/ create a directory called atagone 
-* Copy all files in atagone to your ha_config_dir/custom_components/atagone/ directory.
-* If your are using hasio on docker: Copy all files in atagone to /usr/share/hassio/homeassistant/custom_components/atagone/
-* Configure with config below.
-* Restart Home-Assistant.
+* use HACS (Home Assistant Community Store) to install this component into your HA instance
+* Component Name "Atag One"
 
 ### Usage
-To use this component in your installation, add the following to your configuration.yaml file:
+
+* Use the following link to add the integration to you HA installation
+
+[![my badge](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=atagone)
+
+The configuration is now done in the Homeassistant UI during the installation
+1. Specify the IP address or Hostname of your ATAG One device into the host field
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneDetails.png?raw=true "Screenshot")
+
+1. The port is the default port that Atag One device is using. When using a reverse proxy, you probably need to change this
+1. In the next step select the Area you want to use for this component
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneSucces.png?raw=true "Screenshot")
+
+You will now see the component displayed in the integration dashboard.
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneSucces.png?raw=true "Screenshot")
+
 
 ### Example configuration.yaml entry
+ Please remove the old Climate and Sensor configuration entries from you Configuration.yaml if installed/configured previously
 
-```
-climate:
-  - platform: atagone
-    name: Atag One Thermostat
-    #host is optional and can be left out when using dynamic IP address
-    host: <ip address of ATAG One>
-    port: 10000
-    scan_interval: 10
-```
+### Overview
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/climate.png?raw=true "Screenshot")
 
@@ -43,36 +51,16 @@ It reads the ATAG ONE thermostat report data and display these as sensors in HA
 * Configure with config below.
 * Restart Home-Assistant.
 
-### Changes
-* added a couple of extra sensors. Replace the old sensor section with the below config
+## ATAG One Thermostat Sensor Component
+It reads the ATAG ONE thermostat report data and display these as sensors in HA
+Initially it will deploy 51 sensors which can be disabled if a sensor is not needed
 
-Sensors can be added or removed by removing or adding the required entry(s)
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneSensors.png?raw=true "Screenshot")
 
-```
-sensor:
-  - platform: atagone
-    #host is optional and can be left out when using dynamic IP address
-    host: <ip address of ATAG One>
-    port: 10000
-    scan_interval: 10
-    resources:
-      - room_temp
-      - outside_temp
-      - avg_outside_temp
-      - pcb_temp
-      - ch_setpoint
-      - ch_water_pressure
-      - ch_water_temp
-      - ch_return_temp
-      - dhw_water_temp
-      - dhw_water_pres
-      - boiler_status
-      - boiler_config
-      - burning_hours
-      - voltage
-      - current
-      - rel_mod_level
-```
+It's no longer needed to configure the sensors in configuration.yaml
+Sensors can be added or removed by removing or adding the required entry(s) in the UI
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/disable-sensor.png?raw=true "Screenshot")
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensors.png?raw=true "Screenshot")
 

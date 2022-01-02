@@ -19,4 +19,3 @@ def atag_time(time_string):
     except ValueError:
         raise vol.Invalid("Time does not match atag 24-hour time format HH:MM:SS")
     return time_string
-
