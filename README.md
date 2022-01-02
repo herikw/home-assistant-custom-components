@@ -16,6 +16,10 @@ It reads the Current Temperature and other parameters like central heating water
 
 ### Usage
 
+Use the following link to add the integration to you HA installation
+
+[![my badge](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=atagone)
+
 The configuration is now done in the Homeassistant UI during the installation
 
 1. Specify the IP address or Hostname of your ATAG One device into the host field
