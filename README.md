@@ -51,8 +51,6 @@ Sensors can be added or removed by removing or adding the required entry(s) in t
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/disable-sensor.png?raw=true "Screenshot")
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensors.png?raw=true "Screenshot")
-
 ### Services
 The Atag One integration provides 2 addional services.
 - `atagone.create_vacation`
