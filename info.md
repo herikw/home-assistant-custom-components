@@ -44,8 +44,6 @@ The port is the default port that Atag One device is using. When using a reverse
 
 You will now see the component displayed in the integration dashboard.
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneSucces.png?raw=true "Screenshot")
-
 In the next step select the Area you want to use for this component
 
 ### Overview
