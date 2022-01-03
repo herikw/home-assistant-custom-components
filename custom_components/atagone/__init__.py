@@ -1,4 +1,10 @@
-"""The atagone component."""
+"""
+Atag API wrapper for ATAG One Custom Component
+
+Author: herikw
+https://github.com/herikw/home-assistant-custom-components
+"""
+
 from .const import DOMAIN
 from datetime import timedelta
 import logging
@@ -57,15 +63,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return True
 
-
 async def options_update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
-
     """Handle options update."""
+    
     await hass.config_entries.async_reload(config_entry.entry_id)
 
 
 async def async_unload_entry(hass, entry):
     """Unload Atag config entry."""
+    
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
@@ -78,6 +84,7 @@ class AtagOneEntity(CoordinatorEntity):
 
     def __init__(self, coordinator: DataUpdateCoordinator, atag_id: str) -> None:
         """Initialize the entity."""
+        
         super().__init__(coordinator)
 
         self._id = atag_id
@@ -87,6 +94,7 @@ class AtagOneEntity(CoordinatorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return info for device registry."""
+        
         return DeviceInfo(
             identifiers={(DOMAIN, self.coordinator.data.id)},
             manufacturer="Atag",
