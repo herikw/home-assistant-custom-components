@@ -104,7 +104,7 @@ class AtagOneApi(object):
         if not self.data:
             return None
 
-        return self.reportdata.get("device_id")
+        return self.data["status"].get("device_id")
 
     @property
     def reportdata(self):
