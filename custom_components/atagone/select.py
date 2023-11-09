@@ -80,7 +80,7 @@ SELECT_ENTITIES = (
         name="Temperature influence",
         icon="mdi:home-thermometer-outline",
         entity_category=EntityCategory.CONFIG,
-        options=["Off", "Less", "Avarage", "More", "Room Requlation"],
+        options=["Off", "Less", "Average", "More", "Room Regulation"],
         get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
         select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
     ),
