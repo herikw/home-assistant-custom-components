@@ -5,6 +5,7 @@ Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 """
 
+from asyncio import timeout
 from .const import DOMAIN
 from datetime import timedelta
 import logging
@@ -13,6 +14,7 @@ import async_timeout
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.const import Platform
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -23,7 +25,7 @@ from .atagoneapi import AtagOneApi
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["climate", "sensor"]
+PLATFORMS = [Platform.CLIMATE, Platform.SENSOR, Platform.NUMBER, Platform.SWITCH, Platform.SELECT]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -38,8 +40,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = hass_data
 
     async def _async_update_data():
-        async with async_timeout.timeout(20):
-            await atagapi.async_update()
+        async with timeout(20):
+            try:
+                await atagapi.async_update()
+            except:
+                raise UpdateFailed
 
         return atagapi
 
@@ -99,5 +104,5 @@ class AtagOneEntity(CoordinatorEntity):
             identifiers={(DOMAIN, self.coordinator.data.id)},
             manufacturer="Atag",
             model="Atag One",
-            name="Atag One Thermostat",
+            name="Atag One",
         )

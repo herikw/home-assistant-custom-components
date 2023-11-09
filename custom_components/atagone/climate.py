@@ -16,18 +16,12 @@ from . import AtagOneEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import ServiceCall
-from homeassistant.components.climate import ClimateEntity, PLATFORM_SCHEMA
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, PLATFORM_SCHEMA
 from homeassistant.helpers import config_validation
 
 from homeassistant.components.climate.const import (
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_PRESET_MODE,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_OFF,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
-    PRESET_AWAY,
-    PRESET_HOME,
+    HVACMode,
+    HVACAction,
 )
 from homeassistant.const import (
     ATTR_ENTITY_ID,
@@ -65,13 +59,18 @@ SERVICE_CREATE_VACATION = "create_vacation"
 SERVICE_CANCEL_VACATION = "cancel_vacation"
 
 DEFAULT_RESUME_ALL = False
-PRESET_VACATION = "Vacation"
-AWAY_MODE = "Away"
-PRESET_HOME = "Home"
-PRESET_SLEEP = "Sleep"
 
-HA_PRESET_TO_ATAG = {PRESET_VACATION: 3, PRESET_AWAY: 1, PRESET_HOME: 2}
-ATAG_PRESET_TO_HA = {v: k for k, v in HA_PRESET_TO_ATAG.items()}
+HA_HVAC_MODE_TO_ATAG = {HVACMode.AUTO: 1, HVACMode.HEAT: 0}
+ATAG_HVAC_MODE_TO_HA = {v: k for k, v in HA_HVAC_MODE_TO_ATAG.items()}
+
+HA_PRESETS_TO_ATAG = { 
+    "Manual": 1,
+    "Auto": 2,
+    "Holiday": 3,
+    "Extend": 4,
+    "Fireplace": 5
+}
+ATAG_PRESETS_TO_HA = {v: k for k, v in HA_PRESETS_TO_ATAG.items()}
 
 DTGROUP_INCLUSIVE_MSG = (
     f"{ATTR_START_DATE}, {ATTR_START_TIME}, {ATTR_END_DATE}, "
@@ -94,9 +93,6 @@ CANCEL_VACATION_SCHEMA = vol.Schema(
         vol.Required(ATTR_ENTITY_ID): config_validation.entity_id,
     }
 )
-
-SUPPORT_FLAGS = SUPPORT_TARGET_TEMPERATURE | SUPPORT_PRESET_MODE
-
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities
@@ -149,6 +145,12 @@ async def async_setup_entry(
 class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     """Representation of a Atag One device"""
 
+    _attr_hvac_modes = [HVACMode.HEAT, HVACMode.AUTO]
+    _attr_preset_modes = list(HA_PRESETS_TO_ATAG.keys())
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+    )
+
     def __init__(self, coordinator, atagone_id) -> None:
 
         """Initialize"""
@@ -160,10 +162,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         self._min_temp = DEFAULT_MIN_TEMP
         self._max_temp = DEFAULT_MAX_TEMP
 
-    @property
-    def supported_features(self) -> SUPPORT_FLAGS:
-        """Return the list of supported features."""
-        return SUPPORT_FLAGS
 
     async def create_vacation(self, service_data) -> None:
         """Create a vacation with user-specified parameters."""
@@ -181,18 +179,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         await self.coordinator.data.async_cancel_vacation()
 
     @property
-    def hvac_mode(self) -> str:
-        """Return hvac operation"""
-        if self.coordinator.data.heating:
-            return HVAC_MODE_HEAT
-        return HVAC_MODE_OFF
-
-    @property
-    def hvac_modes(self) -> list[str]:
-        """Return the list of available hvac operation modes. Need to be a subset of HVAC_MODES."""
-        return [HVAC_MODE_HEAT]
-
-    @property
     def current_temperature(self) -> float:
         """Return the current temperature."""
         return self.coordinator.data.current_temp
@@ -204,10 +190,10 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
 
     @property
     def hvac_action(self) -> str:
-        """Return the current running hvac operation if supported.  Need to be one of CURRENT_HVAC_*."""
+        """Return the current running hvac operation if supported"""
         if self.coordinator.data.heating:
-            return CURRENT_HVAC_HEAT
-        return CURRENT_HVAC_IDLE
+            return HVACAction.HEATING
+        return HVACAction.IDLE
 
     @property
     def should_poll(self) -> bool:
@@ -242,26 +228,35 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             return self._max_temp
 
     @property
-    def preset_mode(self) -> str:
-        """Return the current preset mode, e.g., home, away, temp."""
-        return ATAG_PRESET_TO_HA.get(self.coordinator.data.preset)
+    def hvac_modes(self) -> list[str]:
+        """Return the list of available hvac operation modes. """
+        return [HVACMode.HEAT, HVACMode.AUTO]
 
     @property
-    def preset_modes(self) -> list[str]:
-        """Return a list of available preset modes."""
-        return [PRESET_HOME, PRESET_AWAY, PRESET_VACATION]
+    def hvac_mode(self) -> str:
+        atag_hvac = self.coordinator.data.mode
+        return ATAG_HVAC_MODE_TO_HA.get(atag_hvac)
+    
+    @property
+    def preset_mode(self) -> str:
+        """Set new target hvac mode."""
+        preset_mode = self.coordinator.data.preset
+        return ATAG_PRESETS_TO_HA.get(preset_mode)
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set new target hvac mode."""
-
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set a new preset mode. If preset_mode is None, then revert to auto."""
-
-        atag_preset = HA_PRESET_TO_ATAG.get(preset_mode, PRESET_HOME)
-        _LOGGER.debug("set_preset_mode: %s", preset_mode)
-        status = await self.coordinator.data.async_set_preset_mode(atag_preset)
+        atag_hvac = HA_HVAC_MODE_TO_ATAG.get(hvac_mode, HVACMode.AUTO)
+        
+        status = await self.coordinator.data.send_dynamic_change("ch_control_mode", atag_hvac)
         if not status:
-            _LOGGER.error("set_preset_mode: %s", status)
+            _LOGGER.error("ch_control_mode: %s", status)
+            
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set new preset mode."""
+        atag_preset = HA_PRESETS_TO_ATAG.get(preset_mode, "Auto" )
+        status = await self.coordinator.data.send_dynamic_change("ch_mode", atag_preset)
+        if not status:
+            _LOGGER.error("ch_mode: %s", status)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
@@ -270,6 +265,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         if target_temp is None:
             return
         else:
-            status = await self.coordinator.data.async_set_temperature(target_temp)
+            status = await self.coordinator.data.send_dynamic_change("ch_mode_temp", target_temp)
             if not status:
-                _LOGGER.error("set_temperature: %s", status)
+                _LOGGER.error("ch_mode_temp: %s", status)

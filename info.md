@@ -48,9 +48,9 @@ In the next step select the Area you want to use for this component
 
 ### Overview
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/climate.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneNew.png?raw=true "Screenshot")
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/details.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneDetails.png?raw=true "Screenshot")
 
 ## ATAG One Thermostat Sensor Component
 
@@ -63,6 +63,12 @@ It's no longer needed to configure the sensors in configuration.yaml
 Sensors can be added or removed by removing or adding the required entry(s) in the UI
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/disable-sensor.png?raw=true "Screenshot")
+
+### Configuration Controls
+
+Special Controls give you the same configuration options as in the App and on the Website.
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AOneConf.png?raw=true "Screenshot")
 
 ### Services
 
