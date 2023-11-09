@@ -1,3 +1,12 @@
+"""
+Adds Support for Atag One Thermostat
+
+Author: herikw
+https://github.com/herikw/home-assistant-custom-components
+
+"""
+
+
 """Validation utility functions for atagone services."""
 from datetime import datetime
 import voluptuous as vol
