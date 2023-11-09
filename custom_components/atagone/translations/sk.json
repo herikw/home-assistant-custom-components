@@ -1,0 +1,25 @@
+{
+    "config": {
+      "error": {
+        "register_failed": "Registrácia zlyhala, skúste to znova"
+      },
+      "step": {
+        "user": {
+          "data": {
+            "host": "Host",
+            "port": "Port"
+          },
+          "description": "Zadajte podrobnosti o pripojení Atag One",
+          "title": "Atag One detaily"
+        }
+      },
+      "abort": {
+        "discover_timeout": "Termostat Atag One sa nepodarilo nájsť",
+        "no_bridges": "Nebol nájdený žiadny termostat Atag One",
+        "all_configured": "Všetky termostaty Atag One sú už nakonfigurované",
+        "unknown": "Vyskytla sa neznáma chyba",
+        "cannot_connect": "Nedá sa pripojiť k termostatu Atag One",
+        "already_configured": "Termostat Atag One je už nakonfigurovaný"
+      }
+    }
+  }
