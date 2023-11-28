@@ -37,6 +37,7 @@ from .const import (
     DEFAULT_MIN_TEMP,
     DEFAULT_MAX_TEMP,
     DEFAULT_NAME,
+    ControlProperty
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -141,7 +142,6 @@ async def async_setup_entry(
         schema=CANCEL_VACATION_SCHEMA,
     )
 
-
 class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     """Representation of a Atag One device"""
 
@@ -157,12 +157,11 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         super().__init__(coordinator, atagone_id)
 
         self.data = atagone_id
-        self._icon = "mdi:thermostat"
         self._name = DEFAULT_NAME
         self._min_temp = DEFAULT_MIN_TEMP
         self._max_temp = DEFAULT_MAX_TEMP
-
-
+        self._target_temperature_step = 0.5
+        
     async def create_vacation(self, service_data) -> None:
         """Create a vacation with user-specified parameters."""
 
@@ -187,6 +186,11 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     def target_temperature(self) -> float:
         """Return the temperature we try to reach."""
         return self.coordinator.data.current_setpoint
+    
+    @property
+    def target_temperature_step(self) -> float:
+        """Return temp step."""
+        return self._target_temperature_step
 
     @property
     def hvac_action(self) -> str:
@@ -194,6 +198,14 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         if self.coordinator.data.heating:
             return HVACAction.HEATING
         return HVACAction.IDLE
+    
+    @property
+    def icon(self) -> None:
+        """ Return icon based on State """
+        if self.coordinator.data.heating:
+            return "mdi:radiator"
+        else:
+            return "mdi:radiator-off"
 
     @property
     def should_poll(self) -> bool:
@@ -247,16 +259,16 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         """Set new target hvac mode."""
         atag_hvac = HA_HVAC_MODE_TO_ATAG.get(hvac_mode, HVACMode.AUTO)
         
-        status = await self.coordinator.data.send_dynamic_change("ch_control_mode", atag_hvac)
+        status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_CONTROL_MODE, atag_hvac)
         if not status:
-            _LOGGER.error("ch_control_mode: %s", status)
+            _LOGGER.error("set_hvac_mode: %s", status)
             
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
         atag_preset = HA_PRESETS_TO_ATAG.get(preset_mode, "Auto" )
-        status = await self.coordinator.data.send_dynamic_change("ch_mode", atag_preset)
+        status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE, atag_preset)
         if not status:
-            _LOGGER.error("ch_mode: %s", status)
+            _LOGGER.error("set_preset_mode: %s", status)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
@@ -265,6 +277,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         if target_temp is None:
             return
         else:
-            status = await self.coordinator.data.send_dynamic_change("ch_mode_temp", target_temp)
+            status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE_TEMP, target_temp)
             if not status:
-                _LOGGER.error("ch_mode_temp: %s", status)
+                _LOGGER.error("set_temperature: %s", status)

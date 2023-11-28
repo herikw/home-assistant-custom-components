@@ -1,25 +1,25 @@
 {
-    "config": {
-      "error": {
-        "register_failed": "Failed to register, please try again"
-      },
-      "step": {
-        "user": {
-          "data": {
-            "host": "Host",
-            "port": "Port"
-          },
-          "description": "Enter Atag One connection details",
-          "title": "Atag One Details"
-        }
-      },
-      "abort": {
-        "discover_timeout": "Unable to discover Atag One Thermostat",
-        "no_bridges": "No Atag One Thermostat discovered",
-        "all_configured": "All Atag One Thermostats are already configured",
-        "unknown": "Unknown error occurred",
-        "cannot_connect": "Unable to connect to the Atag One Thermostat",
-        "already_configured": "Atag One Thermostat is already configured"
+  "config": {
+    "error": {
+      "register_failed": "Failed to register, please try again"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "description": "Enter Atag One connection details",
+        "title": "Atag One Details"
       }
+    },
+    "abort": {
+      "discover_timeout": "Unable to discover Atag One Thermostat",
+      "no_bridges": "No Atag One Thermostat discovered",
+      "all_configured": "All Atag One Thermostats are already configured",
+      "unknown": "Unknown error occurred",
+      "cannot_connect": "Unable to connect to the Atag One Thermostat",
+      "already_configured": "Atag One Thermostat is already configured"
     }
   }
+}

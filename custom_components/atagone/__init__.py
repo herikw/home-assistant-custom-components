@@ -8,9 +8,12 @@ https://github.com/herikw/home-assistant-custom-components
 from asyncio import timeout
 from .const import DOMAIN
 from datetime import timedelta
+from typing import Any
 import logging
 
 import async_timeout
+
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -21,6 +24,14 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.const import (
+    CONF_HOST, 
+    CONF_PORT,  
+)
+
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr
+
 from .atagoneapi import AtagOneApi
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,8 +58,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 raise UpdateFailed
 
         return atagapi
+    
 
-    atagapi = AtagOneApi(entry.data["host"], entry.data["port"])
+    atagapi = AtagOneApi(entry.data[CONF_HOST],  entry.data[CONF_PORT])
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -83,6 +95,25 @@ async def async_unload_entry(hass, entry):
         hass.data[DOMAIN].pop(entry.entry_id)
     return unload_ok
 
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old entry."""
+    version = entry.version
+
+    _LOGGER.debug("Migrating from version %s", version)
+
+    # 1 -> 2: Unique ID format changed, so delete and re-import:
+    if version == 1:
+        dev_reg = dr.async_get(hass)
+        dev_reg.async_clear_config_entry(entry.entry_id)
+
+        en_reg = er.async_get(hass)
+        en_reg.async_clear_config_entry(entry.entry_id)
+
+        version = entry.version = 2
+
+    _LOGGER.info("Migration to version %s successful", version)
+
+    return True
 
 class AtagOneEntity(CoordinatorEntity):
     """Defines a base entity."""
@@ -105,4 +136,5 @@ class AtagOneEntity(CoordinatorEntity):
             manufacturer="Atag",
             model="Atag One",
             name="Atag One",
+            sw_version=self.coordinator.data.firmware_version,
         )

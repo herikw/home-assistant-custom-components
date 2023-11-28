@@ -7,8 +7,6 @@ https://github.com/herikw/home-assistant-custom-components
 """
 
 import logging
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 from .const import (DEFAULT_NAME, DOMAIN,
                     ISOLATION_LEVELS,
                     ISOLATION_LEVELS_REV,
@@ -24,82 +22,20 @@ from .const import (DEFAULT_NAME, DOMAIN,
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from homeassistant.components.select import SelectEntityDescription, SelectEntity
+from homeassistant.components.select import SelectEntity
+from .const import ATAG_SELECT_ENTITIES, AtagOneSelectEntityDescription
 
 import logging
-
-from abc import ABC
-from collections.abc import Callable, Coroutine
-from .atagoneapi import AtagOneApi
-from dataclasses import dataclass
-from homeassistant.const import EntityCategory
 
 _LOGGER = logging.getLogger(__name__)
 
 from . import AtagOneEntity
 
-@dataclass
-class AtagOneSelectEntityDescription(SelectEntityDescription):
-    """Describes AtagOne switch entity."""
-
-    get_current_option: Callable[[AtagOneApi], Coroutine] = None
-    select_option: Callable[[AtagOneApi], Coroutine] = None
-
-        
-SELECT_ENTITIES = (
-    AtagOneSelectEntityDescription(
-        key="ch_isolation",
-        name="Isolation level",
-        icon="mdi:shield-sun-outline",
-        entity_category=EntityCategory.CONFIG,
-        options=["Poor", "Average", "Good"],
-        get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
-        select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
-    ),
-    AtagOneSelectEntityDescription(
-        key="ch_building_size",
-        name="Building Size",
-        icon="mdi:office-building",
-        entity_category=EntityCategory.CONFIG,
-        options=["Small", "Medium", "Large"],
-        get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
-        select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
-    ),
-    AtagOneSelectEntityDescription(
-        key="ch_heating_type",
-        name="Heating type",
-        icon="mdi:hvac",
-        entity_category=EntityCategory.CONFIG,
-        options=["Air heating", "Convector", "Radiator", "Radiator + underfloor", "Underfloor","Underfloor + radiator"],
-        get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
-        select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
-        
-    ),
-    AtagOneSelectEntityDescription(
-        key="wdr_temps_influence",
-        name="Temperature influence",
-        icon="mdi:home-thermometer-outline",
-        entity_category=EntityCategory.CONFIG,
-        options=["Off", "Less", "Average", "More", "Room Regulation"],
-        get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
-        select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
-    ),
-    AtagOneSelectEntityDescription(
-        key="frost_prot_enabled",
-        name="Frost Protection",
-        icon="mdi:snowflake-thermometer",
-        entity_category=EntityCategory.CONFIG,
-        options=["Off", "Outside", "Inside", "Inside + Outside"],
-        get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
-        select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
-    ),
-)
-
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Initialize sensor platform from config entry."""
     
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([AtagOneSwitch(coordinator, description) for description in SELECT_ENTITIES])
+    async_add_entities([AtagOneSwitch(coordinator, description) for description in ATAG_SELECT_ENTITIES])
 
 class AtagOneSwitch(AtagOneEntity, SelectEntity):
     """Representation of a AtagOne Sensor."""
