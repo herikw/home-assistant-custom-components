@@ -1,7 +1,7 @@
 {
   "config": {
     "error": {
-      "register_failed": "Failed to register, please try again"
+      "register_failed": "Registratie mislukt, probeer opnieuw"
     },
     "step": {
       "user": {
@@ -9,7 +9,7 @@
           "host": "Host",
           "port": "Port"
         },
-        "description": "Enter Atag One connection details",
+        "description": "Atag connectie details",
         "title": "Atag One Details"
       }
     },
