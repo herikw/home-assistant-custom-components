@@ -9,6 +9,7 @@ https://github.com/herikw/home-assistant-custom-components
 """ Constants for the Atag One Integration """
 
 import logging
+from abc import ABC
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -21,10 +22,13 @@ from dataclasses import dataclass
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntityDescription,
+    SensorStateClass
 )
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription, SwitchDeviceClass
 from homeassistant.components.number import NumberEntityDescription,NumberDeviceClass
+from homeassistant.components.climate import ClimateEntityDescription
+from homeassistant.helpers.entity import EntityCategory, EntityDescription
 
 from homeassistant.const import (
     UnitOfTemperature, 
@@ -32,7 +36,6 @@ from homeassistant.const import (
     UnitOfPressure,
     UnitOfInformation
 )
-from homeassistant.const import EntityCategory
 
 DOMAIN = "atagone"
 DEFAULT_NAME = "Atag One"
@@ -43,43 +46,43 @@ DEFAULT_MAX_TEMP = 27
 DEFAULT_PORT = 10000
 
 ISOLATION_LEVELS = { 
-    "Poor": 1,
-    "Average": 2,
-    "Good": 3
+    "poor": 1,
+    "average": 2,
+    "good": 3
 }
 ISOLATION_LEVELS_REV = {v: k for k, v in ISOLATION_LEVELS.items()}
 
 HEATING_TYPES = { 
-    "Air heating": 1,
-    "Convector": 2,
-    "Radiator": 3,
-    "Radiator + underfloor": 4,
-    "Underfloor": 5,
-    "Underfloor + radiator": 6
+    "air_heating": 1,
+    "convector": 2,
+    "radiator": 3,
+    "radiator_underfloor": 4,
+    "underfloor": 5,
+    "underfloor_radiator": 6
 }
 HEATING_TYPES_REV = {v: k for k, v in HEATING_TYPES.items()}
 
 BUILDING_SIZE = { 
-    "Small": 1,
-    "Medium": 2,
-    "Large": 3
+    "small": 1,
+    "medium": 2,
+    "large": 3
 }
 BUILDING_SIZE_REV = {v: k for k, v in BUILDING_SIZE.items()}
 
 TEMP_INFLUENCE = { 
-    "Off": 0,
-    "Less": 1,
-    "Average": 2,
-    "More": 3,
-    "Room Regulation": 4
+    "off": 0,
+    "less": 1,
+    "average": 2,
+    "more": 3,
+    "room_regulation": 4
 }
 TEMP_INFLUENCE_REV = {v: k for k, v in TEMP_INFLUENCE.items()}
  
 FROST_PROTECTION = {
-    "Inside": 2,
-    "Outside": 1,
-    "Inside + Outside": 3,
-    "Off": 0
+    "inside": 2,
+    "outside": 1,
+    "inside_outside": 3,
+    "off": 0
 }
 FROST_PROTECTION_REV = {v: k for k, v in FROST_PROTECTION.items()}
 
@@ -89,7 +92,7 @@ WEATHER_STATES = {
     1: {"state": "Clear", "icon": "mdi:weather-night"},
     2: {"state": "Rainy", "icon": "mdi:weather-rainy"},
     3: {"state": "Snowy", "icon": "mdi:weather-snowy"},
-    4: {"state": "Haik", "icon": "mdi:weather-hail"},
+    4: {"state": "Hail", "icon": "mdi:weather-hail"},
     5: {"state": "Windy", "icon": "mdi:weather-windy"},
     6: {"state": "Fog", "icon": "mdi:weather-fog"},
     7: {"state": "Cloudy", "icon": "mdi:weather-cloudy"},
@@ -121,7 +124,7 @@ class ControlProperty:
     DHW_MODE: str = "dhw_mode"
     DHW_MODE_TEMP: str = "dhw_mode_temp"
     WEATHER_STATUS: str = "weather_status"
-    WEAHTER_TEMP: str = "weather_temp"
+    WEATHER_TEMP: str = "weather_temp"
     VACATION_DURATION: str = "vacation_duration"
     EXTENDED_DURATION: str = "extend_duration"
     FIREPLACE_DURATION: str = "fireplace_duration"
@@ -226,83 +229,108 @@ class ReportItems:
         LUMC_DHW_HOURS: str = "lmuc_dhw_hours"
         KP: str = "KP"
         KI: str = "KI"
-
+        
+@dataclass
+class AtagOneBaseEntityDescription(EntityDescription, ABC):
+    """Describes AtagOne base entity."""
+        
+@dataclass
+class AtagOneClimateEntityDescription(ClimateEntityDescription, AtagOneBaseEntityDescription):
+    """Describes AtagOne climate entity."""
+    
+ATAG_CLIMATE_ENTITY = (
+    AtagOneClimateEntityDescription(
+        key=f"{DOMAIN}",
+        name=f"{DEFAULT_NAME}",
+        translation_key="atag_one",
+        unit_of_measurement=UnitOfTemperature.CELSIUS
+    )
+)
+    
 @dataclass
 class AtagOneSensorEntityDescription(SensorEntityDescription):
-    """Describes AtagOne number entity."""
+    """Describes AtagOne sensor entity."""
     get_native_value: Callable[[AtagOneApi], Coroutine] = None
     
 ATAG_SENSOR_ENTITIES = (
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.BOILER_ERRORS}",
-        name="Boiler Errors",
+        translation_key=f"{ReportItems.BOILER_ERRORS}",
         entity_registry_enabled_default=True,
         entity_category=EntityCategory.DIAGNOSTIC,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.ROOM_TEMP}",
-        name="Room Temp",
+        translation_key=f"{ReportItems.ROOM_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.TOUT_AVG}",
-        name="Average Outside Temp",
+        translation_key=f"{ReportItems.TOUT_AVG}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.BOILER_RETURN_TEMP}",
-        name="Boiler Return Temp",
+        translation_key=f"{ReportItems.Details.BOILER_RETURN_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.REL_MOD_LEVEL}",
-        name="Burner",
+        translation_key=f"{ReportItems.Details.REL_MOD_LEVEL}",
+        name=f"Burner",
         native_unit_of_measurement="%",
         icon="mdi:fire",
         entity_registry_enabled_default=True,
+        state_class=SensorStateClass.MEASUREMENT,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.OUTSIDE_TEMP}",
-        name="Outside Temp",
+        translation_key=f"{ReportItems.OUTSIDE_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.DBG_OUTSIDE_TEMP}",
-        name="DBG Outside Temp",
+        translation_key=f"{ReportItems.DBG_OUTSIDE_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.PCB_TEMP}",
-        name="PCB Temp",
+        translation_key=f"{ReportItems.PCB_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CH_SETPOINT}",
-        name="Setpoint Hotwater",
+        translation_key=f"{ReportItems.CH_SETPOINT}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -311,16 +339,17 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.DHW_WATER_TEMP}",
-        name="DHW Water Temp",
+        translation_key=f"{ReportItems.DHW_WATER_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CH_WATER_TEMP}",
-        name="CH Water Temp",
+        translation_key=f"{ReportItems.CH_WATER_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_registry_enabled_default=True,
@@ -328,106 +357,114 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CH_RETURN_TEMP}",
-        name="CH Return Temp",
+        translation_key=f"{ReportItems.CH_RETURN_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.DHW_WATER_PRES}",
-        name="DHW Water Presure",
+        translation_key=f"{ReportItems.DHW_WATER_PRES}",
         native_unit_of_measurement=UnitOfPressure.BAR,
         device_class=SensorDeviceClass.PRESSURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CH_WATER_PRES}",
-        name="CH Water Pressure",
+        translation_key=f"{ReportItems.CH_WATER_PRES}",
         native_unit_of_measurement=UnitOfPressure.BAR,
         device_class=SensorDeviceClass.PRESSURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CURRENT}",
-        name="Current",
+        translation_key=f"{ReportItems.CURRENT}",
         native_unit_of_measurement="mA",
         device_class=SensorDeviceClass.CURRENT,
         entity_registry_enabled_default=True,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.VOLTAGE}",
-        translation_key="voltage",
-        name="Voltage",
+        translation_key=f"{ReportItems.VOLTAGE}",
         native_unit_of_measurement="V",
         device_class=SensorDeviceClass.VOLTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.WEATHER_STATUS}",
-        name="Weather",
-        device_class="wheaterstatus",
+        translation_key="weather",
+        device_class="weatherstatus",
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
-        key=f"{ControlProperty.WEAHTER_TEMP}",
-        name="Weather Temp",
+        key=f"{ControlProperty.WEATHER_TEMP}",
+        translation_key=f"{ControlProperty.WEATHER_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.BOILER_STATUS}",
-        name="Boiler Status",
+        translation_key=f"{ReportItems.BOILER_STATUS}",
         device_class="boilerstatus",
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.BURNING_HOURS}",
-        name="Burning Hours",
+        translation_key=f"{ReportItems.BURNING_HOURS}",
         native_unit_of_measurement=UnitOfTime.HOURS,
         device_class=SensorDeviceClass.DURATION,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.POWER_CONS}",
-        name="Power Consumption",
+        translation_key=f"{ReportItems.POWER_CONS}",
         device_class=SensorDeviceClass.GAS,
+        state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="m³/h",
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.RSSI}",
-        name="Wifi Strength",
+        translation_key=f"{ReportItems.RSSI}",
         entity_registry_enabled_default=True,
+        state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:wifi-strength-1",
         native_unit_of_measurement="dBm",
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.MEMPORY_ALLOCATION}",
-        name="Memory Allocation",
+        translation_key=f"{ReportItems.MEMPORY_ALLOCATION}",
         native_unit_of_measurement=UnitOfInformation.MEGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         entity_category=EntityCategory.DIAGNOSTIC,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CHARGE_STATUS}",
-        translation_key="charge_status",
-        name="Charge Status",
+        translation_key=f"{ReportItems.CHARGE_STATUS}",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,
         icon="mdi:battery-charging",
@@ -435,8 +472,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.DHW_FLOW_RATE}",
-        translation_key="dhw_flow_rate",
-        name="DHW Flow Rate",
+        translation_key=f"{ReportItems.DHW_FLOW_RATE}",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,
         icon="mdi:water-boiler",
@@ -444,8 +480,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.MAX_BOILER_TEMP}",
-        translation_key="max_boiler_temp",
-        name="Max Boiler Temp",
+        translation_key=f"{ReportItems.Details.MAX_BOILER_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -454,8 +489,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.BOILER_CAPACITY}",
-        translation_key="boiler_capacity",
-        name="Boiler Capacity",
+        translation_key=f"{ReportItems.Details.BOILER_CAPACITY}",
         native_unit_of_measurement="L",
         icon="mdi:water-boiler",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -464,8 +498,7 @@ ATAG_SENSOR_ENTITIES = (
     ),    
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.CH_TIME_TO_TEMP}",
-        translation_key="ch_time_to_temp",
-        name="CH Time to Temp",
+        translation_key=f"{ReportItems.CH_TIME_TO_TEMP}",
         icon="mdi:flash",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
@@ -473,7 +506,7 @@ ATAG_SENSOR_ENTITIES = (
     ),  
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.DHW_TEMP_SETP}",
-        name="Setpoint DHW",
+        translation_key=f"{ControlProperty.DHW_TEMP_SETP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -482,8 +515,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.RESETS}",
-        translation_key="resets",
-        name="Resets",
+        translation_key=f"{ReportItems.RESETS}",
         entity_registry_enabled_default=True,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:flash",
@@ -491,8 +523,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.LUMC_BURNER_STARTS}",
-        translation_key="lmuc_burner_starts",
-        name="LMUC Burner Starts",
+        translation_key=f"{ReportItems.LUMC_BURNER_STARTS}",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,
         icon="mdi:fire",
@@ -500,8 +531,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.OVERSHOOT}",
-        translation_key="overshoot",
-        name="Overshoot",
+        translation_key=f"{ReportItems.Details.OVERSHOOT}",
         icon="mdi:flash",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
@@ -509,7 +539,7 @@ ATAG_SENSOR_ENTITIES = (
     ), 
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.REGULATION_STATE}",
-        name="Regulation State",
+        translation_key=f"{ReportItems.Details.REGULATION_STATE}",
         icon="mdi:flash",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
@@ -517,7 +547,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.VACATION_DURATION}",
-        name="Vacation Duration",
+        translation_key=f"{ControlProperty.VACATION_DURATION}",
         icon="mdi:hours-24",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
@@ -525,7 +555,7 @@ ATAG_SENSOR_ENTITIES = (
     ),  
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.EXTENDED_DURATION}",
-        name="Extend Duration",
+        translation_key=f"{ControlProperty.EXTENDED_DURATION}",
         icon="mdi:hours-24",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
@@ -533,7 +563,7 @@ ATAG_SENSOR_ENTITIES = (
     ),  
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.FIREPLACE_DURATION}",
-        name="Fireplace Duration",
+        translation_key=f"{ControlProperty.FIREPLACE_DURATION}",
         icon="mdi:hours-24",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
@@ -541,14 +571,14 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.BOILER_CONFIG}",
-        name="Boiler Configuration",
+        translation_key=f"{ReportItems.BOILER_CONFIG}",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.SHOW_SET_TEMP}",
-        name="Set Temp",
+        translation_key=f"{ReportItems.SHOW_SET_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -557,7 +587,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.TARGET_TEMP}",
-        name="Target Temp",
+        translation_key=f"{ReportItems.Details.TARGET_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_registry_enabled_default=True,  
@@ -565,7 +595,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.CH_MODE_DURATION}",
-        name="CH Mode Duration",
+        translation_key=f"{ControlProperty.CH_MODE_DURATION}",
         icon="mdi:hours-24",
         entity_registry_enabled_default=True, 
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -573,7 +603,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.CH_MODE_TEMP}",
-        name="CH Mode Temp",
+        translation_key=f"{ControlProperty.CH_MODE_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         entity_registry_enabled_default=True,  
@@ -581,7 +611,7 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.DHW_STATUS}",
-        name="DHW Status",
+        translation_key=f"{ControlProperty.DHW_STATUS}",
         icon="mdi:water-boiler",
         entity_registry_enabled_default=True,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -589,13 +619,12 @@ ATAG_SENSOR_ENTITIES = (
     ),
     AtagOneSensorEntityDescription(
         key=f"{ControlProperty.DHW_MODE_TEMP}",
-        translation_key="dhw_mode_temp",
-        name="DHW Mode Temp",
+        translation_key=f"{ControlProperty.DHW_MODE_TEMP}",
         icon="mdi:water-boiler",
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
-    ),
+    )
 )
 
 @dataclass
@@ -609,47 +638,52 @@ class AtagOneSelectEntityDescription(SelectEntityDescription):
 ATAG_SELECT_ENTITIES = (
     AtagOneSelectEntityDescription(
         key=f"{ConfigurationProperty.CH_ISOLATION}",
-        name="Isolation level",
+        translation_key=f"{ConfigurationProperty.CH_ISOLATION}",
         icon="mdi:shield-sun-outline",
         entity_category=EntityCategory.CONFIG,
-        options=["Poor", "Average", "Good"],
+        options=[*ISOLATION_LEVELS],
+        has_entity_name = True,
         get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
         select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
     ),
     AtagOneSelectEntityDescription(
         key=f"{ConfigurationProperty.CH_BUILDING_SIZE}",
-        name="Building Size",
+        translation_key=f"{ConfigurationProperty.CH_BUILDING_SIZE}",
         icon="mdi:office-building",
         entity_category=EntityCategory.CONFIG,
-        options=["Small", "Medium", "Large"],
+        options=[*BUILDING_SIZE],
+        has_entity_name = True,
         get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
         select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
     ),
     AtagOneSelectEntityDescription(
         key=f"{ConfigurationProperty.CH_HEATING_TYPE}",
-        name="Heating type",
+        translation_key=f"{ConfigurationProperty.CH_HEATING_TYPE}",
         icon="mdi:hvac",
         entity_category=EntityCategory.CONFIG,
-        options=["Air heating", "Convector", "Radiator", "Radiator + underfloor", "Underfloor","Underfloor + radiator"],
+        options=[*HEATING_TYPES],
+        has_entity_name = True,
         get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
         select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
         
     ),
     AtagOneSelectEntityDescription(
         key=f"{ConfigurationProperty.WDR_TEMP_INFLUENCE}",
-        name="Temperature influence",
+        translation_key=f"{ConfigurationProperty.WDR_TEMP_INFLUENCE}",
         icon="mdi:home-thermometer-outline",
         entity_category=EntityCategory.CONFIG,
-        options=["Off", "Less", "Average", "More", "Room Regulation"],
+        options=[*TEMP_INFLUENCE],
+        has_entity_name = True,
         get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
         select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
     ),
     AtagOneSelectEntityDescription(
         key=f"{ConfigurationProperty.FROST_PROT_ENABLED}",
-        name="Frost Protection",
+        translation_key=f"{ConfigurationProperty.FROST_PROT_ENABLED}",
         icon="mdi:snowflake-thermometer",
         entity_category=EntityCategory.CONFIG,
-        options=["Off", "Outside", "Inside", "Inside + Outside"],
+        options=[*FROST_PROTECTION],
+        has_entity_name = True,
         get_current_option=lambda entity, value: entity.coordinator.data.configurationdata.get(value),
         select_option=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
     ),
@@ -681,7 +715,7 @@ class AtagOneNumberEntityDescription(NumberEntityDescription):
 ATAG_NUMBER_ENTITIES = (
     AtagOneNumberEntityDescription(
         key=f"{ControlProperty.CH_MODE_TEMP}",
-        name="Target Temp",
+        translation_key=f"{ControlProperty.CH_MODE_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         mode="slider",
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -695,7 +729,7 @@ ATAG_NUMBER_ENTITIES = (
     ),
     AtagOneNumberEntityDescription(
         key=f"{ConfigurationProperty.OUTS_TEMP_OFFS}",
-        name="Outside Temp Offset",
+        translation_key=f"{ConfigurationProperty.OUTS_TEMP_OFFS}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         mode="slider",
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -709,7 +743,7 @@ ATAG_NUMBER_ENTITIES = (
     ),
     AtagOneNumberEntityDescription(
         key=f"{ConfigurationProperty.ROOM_TEMP_OFFS}",
-        name="Room Temp Offset",
+        translation_key=f"{ConfigurationProperty.ROOM_TEMP_OFFS}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         mode="slider",
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -723,7 +757,7 @@ ATAG_NUMBER_ENTITIES = (
     ),
     AtagOneNumberEntityDescription(
         key=f"{ConfigurationProperty.SUMMER_ECO_TEMP}",
-        name="Summer ECO Temp",
+        translation_key=f"{ConfigurationProperty.SUMMER_ECO_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         mode="slider",
         device_class=NumberDeviceClass.TEMPERATURE,
@@ -737,7 +771,7 @@ ATAG_NUMBER_ENTITIES = (
     ),
     AtagOneNumberEntityDescription(
         key=f"{ControlProperty.DHW_TEMP_SETP}",
-        name="DHW Setpoint",
+        translation_key=f"{ControlProperty.DHW_TEMP_SETP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         mode="slider",
         device_class=NumberDeviceClass.TEMPERATURE,

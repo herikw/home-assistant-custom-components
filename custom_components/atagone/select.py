@@ -5,8 +5,10 @@ Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 
 """
+# type: ignore
 
 import logging
+import asyncio
 from .const import (DEFAULT_NAME, DOMAIN,
                     ISOLATION_LEVELS,
                     ISOLATION_LEVELS_REV,
@@ -17,7 +19,7 @@ from .const import (DEFAULT_NAME, DOMAIN,
                     TEMP_INFLUENCE,
                     TEMP_INFLUENCE_REV,
                     FROST_PROTECTION,
-                    FROST_PROTECTION_REV,          
+                    FROST_PROTECTION_REV         
 )
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -29,7 +31,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-from . import AtagOneEntity
+from .entity import AtagOneEntity
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Initialize sensor platform from config entry."""
@@ -40,7 +42,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class AtagOneSwitch(AtagOneEntity, SelectEntity):
     """Representation of a AtagOne Sensor."""
 
-    _attr_has_entity_name = True
     entity_description: AtagOneSelectEntityDescription
     
     def __init__(self, coordinator, description: AtagOneSelectEntityDescription):
@@ -50,13 +51,8 @@ class AtagOneSwitch(AtagOneEntity, SelectEntity):
 
         self.coordinator = coordinator
         self.entity_description = description
-
-        self._attr_unique_id = f"{description.key}"
-        self._attr_name = f"{description.name}"
-        self._attr_device_class = description.device_class
-        self._attr_entity_category = description.entity_category
-        self._attr_mode = "dropdown"
-
+        self._attr_mode = "dropdown"        
+    
     @property
     def current_option(self):
         """Return current selected option."""
@@ -90,3 +86,5 @@ class AtagOneSwitch(AtagOneEntity, SelectEntity):
         
         status = await self.entity_description.select_option(self, funct, val)
         self.async_write_ha_state()
+        await asyncio.sleep(1)
+        await self.coordinator.async_request_refresh()
