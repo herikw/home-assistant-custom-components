@@ -30,7 +30,7 @@ DATA_SCHEMA = vol.Schema(
 class AtagConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Atag One"""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self):
         """Initialize the AtagOne flow."""

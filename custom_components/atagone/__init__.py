@@ -10,23 +10,18 @@ from .const import DOMAIN
 from datetime import timedelta
 from typing import Any
 import logging
-
-import async_timeout
-
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
     DataUpdateCoordinator,
-    UpdateFailed,
+    UpdateFailed
 )
 from homeassistant.const import (
     CONF_HOST, 
-    CONF_PORT,  
+    CONF_PORT
 )
 
 from homeassistant.helpers import entity_registry as er
@@ -97,44 +92,45 @@ async def async_unload_entry(hass, entry):
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate old entry."""
+    
     version = entry.version
-
-    _LOGGER.debug("Migrating from version %s", version)
+    
+    _LOGGER.info("Migrating from version %s", version)
 
     # 1 -> 2: Unique ID format changed, so delete and re-import:
-    if version == 1:
+    if version == 2:
+        
+        """
         dev_reg = dr.async_get(hass)
         dev_reg.async_clear_config_entry(entry.entry_id)
 
-        en_reg = er.async_get(hass)
+        en_reg = er.async_get(hass)        
         en_reg.async_clear_config_entry(entry.entry_id)
-
-        version = entry.version = 2
-
+                            
+        version = entry.version = 3
+        """
+        
+        en_reg = er.async_get(hass)
+        items = en_reg.entities.items()
+        en_reg.async_clear_config_entry(entry.entry_id)
+        
+        for entity_id, e_entry in list(items):
+            """ change Unique ID  """
+            if e_entry.config_entry_id == entry.entry_id:
+                unique_id = e_entry.unique_id
+                en_reg.async_remove(entity_id)
+                en_reg.async_get_or_create(
+                    e_entry.domain,
+                    e_entry.platform,
+                    e_entry.unique_id,
+                    suggested_object_id=unique_id,
+                    config_entry=entry,
+                    device_id=e_entry.device_id,
+                )
+                entry.version = 3
+                _LOGGER.debug("new id: %s", unique_id)
+                
+        version = entry.version = 3 
     _LOGGER.info("Migration to version %s successful", version)
 
     return True
-
-class AtagOneEntity(CoordinatorEntity):
-    """Defines a base entity."""
-
-    def __init__(self, coordinator: DataUpdateCoordinator, atag_id: str) -> None:
-        """Initialize the entity."""
-        
-        super().__init__(coordinator)
-
-        self._id = atag_id
-        self._attr_name = DOMAIN.title()
-        self._attr_unique_id = f"{coordinator.data.id}-{atag_id}"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return info for device registry."""
-        
-        return DeviceInfo(
-            identifiers={(DOMAIN, self.coordinator.data.id)},
-            manufacturer="Atag",
-            model="Atag One",
-            name="Atag One",
-            sw_version=self.coordinator.data.firmware_version,
-        )

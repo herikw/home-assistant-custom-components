@@ -9,14 +9,15 @@ https://github.com/herikw/home-assistant-custom-components
 import logging
 from typing import Any
 import voluptuous as vol
+import asyncio
 
 from .util import atag_date, atag_time
-from . import AtagOneEntity
+from .entity import AtagOneEntity
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import ServiceCall
-from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, PLATFORM_SCHEMA
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature
 from homeassistant.helpers import config_validation
 
 from homeassistant.components.climate.const import (
@@ -26,9 +27,6 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import (
     ATTR_ENTITY_ID,
     ATTR_TEMPERATURE,
-    CONF_HOST,
-    CONF_PORT,
-    CONF_NAME,
     TEMP_CELSIUS,
 )
 
@@ -36,19 +34,12 @@ from .const import (
     DOMAIN,
     DEFAULT_MIN_TEMP,
     DEFAULT_MAX_TEMP,
-    DEFAULT_NAME,
-    ControlProperty
+    ControlProperty,
+    AtagOneClimateEntityDescription,
+    ATAG_CLIMATE_ENTITY
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
-    {
-        vol.Optional(CONF_NAME, default=DEFAULT_NAME): config_validation.string,
-        vol.Optional(CONF_HOST): config_validation.string,
-        vol.Optional(CONF_PORT, default=10000): config_validation.positive_int,
-    }
-)
 
 ATTR_END_DATE = "end_date"
 ATTR_END_TIME = "end_time"
@@ -96,14 +87,14 @@ CANCEL_VACATION_SCHEMA = vol.Schema(
 )
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities
 ) -> None:
     """Setup Atag One Thermostat"""
-
+    
     entities = []
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    entities.append(AtagOneThermostat(coordinator, "climate"))
-
+    coordinator = hass.data[DOMAIN][config_entry.entry_id]
+    entities.append(AtagOneThermostat(coordinator, ATAG_CLIMATE_ENTITY))
+        
     async_add_entities(entities)
 
     @callback
@@ -144,20 +135,26 @@ async def async_setup_entry(
 
 class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     """Representation of a Atag One device"""
+    
+    _attr_has_entity_name = True
+    entity_description: AtagOneClimateEntityDescription
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.AUTO]
-    _attr_preset_modes = list(HA_PRESETS_TO_ATAG.keys())
+    _attr_preset_modes = [*HA_PRESETS_TO_ATAG]
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
     )
-
-    def __init__(self, coordinator, atagone_id) -> None:
+    
+    def __init__(self, coordinator, description: AtagOneClimateEntityDescription) -> None:
 
         """Initialize"""
-        super().__init__(coordinator, atagone_id)
-
-        self.data = atagone_id
-        self._name = DEFAULT_NAME
+        super().__init__(coordinator, description)
+        
+        self.coordinator = coordinator
+        self.entity_description = description
+        self._name = description.name
+        
+        self._attr_translation_key = f"{self.entity_description.translation_key}"
         self._min_temp = DEFAULT_MIN_TEMP
         self._max_temp = DEFAULT_MAX_TEMP
         self._target_temperature_step = 0.5
@@ -176,6 +173,11 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     async def cancel_vacation(self) -> None:
         """Delete a vacation with the specified name."""
         await self.coordinator.data.async_cancel_vacation()
+        
+    @property
+    def name(self):
+        """Return the Name"""
+        return self._name
 
     @property
     def current_temperature(self) -> float:
@@ -206,21 +208,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             return "mdi:radiator"
         else:
             return "mdi:radiator-off"
-
-    @property
-    def should_poll(self) -> bool:
-        """Return the polling state."""
-        return True
-
-    @property
-    def name(self) -> str:
-        """Return the name of the climate device."""
-        return self._name
-
-    @property
-    def unique_id(self) -> str:
-        """Return the unique ID of the binary sensor."""
-        return self._name
 
     @property
     def temperature_unit(self) -> str:
@@ -262,6 +249,11 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_CONTROL_MODE, atag_hvac)
         if not status:
             _LOGGER.error("set_hvac_mode: %s", status)
+            return None
+        
+        self.async_write_ha_state()
+        await asyncio.sleep(1)
+        await self.coordinator.async_request_refresh()
             
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""
@@ -269,14 +261,24 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE, atag_preset)
         if not status:
             _LOGGER.error("set_preset_mode: %s", status)
+            return None
+        
+        self.async_write_ha_state()
+        await asyncio.sleep(1)
+        await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature."""
 
         target_temp = kwargs.get(ATTR_TEMPERATURE)
         if target_temp is None:
-            return
+            return None
         else:
             status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE_TEMP, target_temp)
             if not status:
                 _LOGGER.error("set_temperature: %s", status)
+                return None
+            
+            self.async_write_ha_state()
+            await asyncio.sleep(1)
+            await self.coordinator.async_request_refresh()

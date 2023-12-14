@@ -9,7 +9,7 @@
           "host": "Host",
           "port": "Port"
         },
-        "description": "Enter Atag One connection details",
+        "description": "Enter Atag One Connection details",
         "title": "Atag One Details"
       }
     },
@@ -21,5 +21,278 @@
       "cannot_connect": "Unable to connect to the Atag One Thermostat",
       "already_configured": "Atag One Thermostat is already configured"
     }
+  },
+  "entity": {
+    "climate": {
+      "atag_one": {
+        "name": "Thermostat",
+        "state": {
+          "auto": "Auto",
+          "heat": "Heat"
+        }
+      },
+      "hvac_mode": {
+        "state": {
+          "auto": "Auto",
+          "heat": "Heat"
+        }
+      },
+      "preset_mode": {
+        "name": "Preset",
+        "state": {
+          "Manual": "Manual",
+          "Auto": "Auto",
+          "Holiday": "Vacation",
+          "Extend": "Extend",
+          "Firepace": "Firepace"
+        }
+      },
+      "current_temperature": {
+        "name": "Huidige temperature"
+      },
+      "temperature": {
+        "name": "Doel temperatuur"
+      },
+      "preset_modes": {
+        "name": "Voorinstellingen"
+      }
+    },
+    "select": {
+      "ch_heating_type": {
+        "name": "Heating type",
+        "state": {
+          "air_heating": "Air Heating",
+          "convector": "Convector",
+          "radiator": "Radiator",
+          "radiator_underfloor": "Radiator + Underfloor",
+          "underfloor": "Underfloor",
+          "underfloor_radiator": "Underfloor + Radiator"
+        }
+      },
+      "ch_isolation": {
+        "name": "Isolation Level",
+        "state": {
+          "poor": "Poor",
+          "average": "Average",
+          "good": "Good"
+        }
+      },
+      "ch_building_size": {
+        "name": "Building size",
+        "state": {
+          "small": "Small",
+          "medium": "Medium",
+          "large": "Large"
+        }
+      },
+      "wdr_temps_influence": {
+        "name": "Temperature Influence",
+        "state": {
+          "off": "Off",
+          "less": "Less",
+          "average": "Average",
+          "more": "More",
+          "room_regulation": "Room Regulation"
+        }
+      },
+      "frost_prot_enabled": {
+        "name": "Frost Protection",
+        "state": {
+          "off": "Off",
+          "outside": "Outside",
+          "inside": "Inside",
+          "inside_outside": "Inside + Outside"
+        }
+      }
+    },
+    "switch": {
+      "summer_eco_mode": {
+        "name": "Summer ECO Mode"
+      }
+    },
+    "number": {
+      "ch_mode_temp": {
+        "name": "Target Temp"
+      },
+      "outs_temp_offs": {
+        "name": "Outside Temp Offset"
+      },
+      "room_temp_offs": {
+        "name": "Room Temp Offset"
+      },
+      "summer_eco_temp": {
+        "name": "Summer ECO Temp"
+      },
+      "dhw_temp_setp": {
+        "name": "DHW Setpoint"
+      }
+    },
+    "sensor": {
+      "boiler_status": {
+        "name": "Boiler Status",
+        "state": {
+          "Idle": "Idle",
+          "Boiler": "Boiler",
+          "Central": "Central",
+          "Water": "Water"
+        }
+      },
+      "burning_hours": {
+        "name": "Burning Hours"
+      },
+      "room_temp": {
+        "name": "Room Temp"
+      },
+      "outside_temp": {
+        "name": "Outside Temp"
+      },
+      "pcb_temp": {
+        "name": "PCB Temp"
+      },
+      "dhw_water_temp": {
+        "name": "DHW Water Temp"
+      },
+      "ch_water_temp": {
+        "name": "CH Water Temp"
+      },
+      "dhw_water_pres": {
+        "name": "DHW Water Presure"
+      },
+      "ch_water_pres": {
+        "name": "CH Water Pressure"
+      },
+      "ch_return_temp": {
+        "name": "CH Return Temp"
+      },
+      "ch_time_to_temp": {
+        "name": "CH Time to Temp"
+      },
+      "shown_set_temp": {
+        "name": "Set Temp"
+      },
+      "power_cons": {
+        "name": "Power Consumption"
+      },
+      "tout_avg": {
+        "name": "Average Outside Temp"
+      },
+      "rssi": {
+        "name": "Wifi Strength"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "voltage": {
+        "name": "Voltage"
+      },
+      "charge_status": {
+        "name": "Charge Status",
+        "state": {
+          "Idle": "Inactief",
+          "Charging": "Laden"
+        }
+      },
+      "lmuc_burner_starts": {
+        "name": "LMUC Burner Starts"
+      },
+      "dhw_flow_rate": {
+        "name": "DHW Flow Rate"
+      },
+      "resets": {
+        "name": "Resets"
+      },
+      "memory_allocation": {
+        "name": "Memory Allocation"
+      },
+      "dhw_mode_temp": {
+        "name": "DHW Mode Temp"
+      },
+      "dhw_status": {
+        "name": "DHW Status"
+      },
+      "ch_mode_duration": {
+        "name": "CH Mode Duration"
+      },
+      "boiler_config": {
+        "name": "Boiler Configuration"
+      },
+      "fireplace_duration": {
+        "name": "Fireplace Duration"
+      },
+      "extend_duration": {
+        "name": "Extend Duration"
+      },
+      "vacation_duration": {
+        "name": "Vacation Duration"
+      },
+      "regulation_state": {
+        "name": "Regulation State"
+      },
+      "overshoot": {
+        "name": "Overshoot"
+      },
+      "boiler_capacity": {
+        "name": "Boiler Capacity"
+      },
+      "weather": {
+        "name": "Weather",
+        "state": {
+          "Sunny": "Sunny",
+          "Clear": "Clear",
+          "Rainy": "Rainy",
+          "Snowy": "Snowy",
+          "Hail": "Hail",
+          "Windy": "Windy",
+          "Fog": "Fog",
+          "Cloudy": "Cloudy",
+          "Partly Sunny": "Partly Sunny",
+          "Pouring": "Pouring",
+          "Ligthning": "Ligthning",
+          "Hurricane": "Hurricane",
+          "Partly Cloudy": "Partly Cloudy"
+        }
+      },
+      "burner": {
+        "name": "Burner"
+      },
+      "boiler_errors": {
+        "name": "Boiler Errors"
+      },
+      "dbg_outside_temp": {
+        "name": "DBG Outside Temp"
+      },
+      "ch_setpoint": {
+        "name": "Setpoint Hotwater"
+      },
+      "weather_temp": {
+        "name": "Weather Temp"
+      },
+      "max_boiler_temp": {
+        "name": "Max Boiler Temp"
+      },
+      "target_temp": {
+        "name": "Target Temp"
+      },
+      "boiler_return_temp": {
+        "name": "Boiler Return Temp"
+      },
+      "ch_mode_temp": {
+        "name": "CH Mode Temp"
+      },
+      "dhw_temp_setp": {
+        "name": "Setpoint DHW"
+      },
+      "outs_temp_offs": {
+        "name": "Outside Temp Correction"
+      },
+      "room_temp_offs": {
+        "name": "Room Temp Offset"
+      },
+      "summer_eco_temp": {
+        "name": "Summer Eco Temp"
+      }
+    }
   }
 }
+
+

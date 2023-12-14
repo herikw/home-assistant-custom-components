@@ -7,6 +7,7 @@ https://github.com/herikw/home-assistant-custom-components
 """
 
 import logging
+import asyncio
 
 from .const import DOMAIN, ATAG_NUMBER_ENTITIES, AtagOneNumberEntityDescription
 
@@ -14,7 +15,7 @@ from homeassistant.components.number import NumberEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-from . import AtagOneEntity
+from .entity import AtagOneEntity
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     """Initialize sensor platform from config entry."""
@@ -35,16 +36,10 @@ class AtagOneNumber(AtagOneEntity, NumberEntity):
 
         self.coordinator = coordinator
         self.entity_description = description
-
-        self._attr_unique_id = f"{description.key}"
-        self._attr_name = f"{description.name}"
         self._attr_native_min_value = description.native_min_value
         self._attr_native_max_value = description.native_max_value
         self._attr_native_step = description.native_step
-        self._attr_device_class = description.device_class
-        self._attr_entity_category = description.entity_category
-        self._attr_native_unit_of_measurement = description.native_unit_of_measurement
-
+    
     @property
     def native_value(self) -> float | None:
         """Return the current value"""
@@ -56,4 +51,6 @@ class AtagOneNumber(AtagOneEntity, NumberEntity):
         
         await self.entity_description.set_native_value(self, self.entity_description.key, value)
         self.async_write_ha_state()
+        await asyncio.sleep(1)
+        await self.coordinator.async_request_refresh()
         

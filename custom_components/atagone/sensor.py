@@ -5,7 +5,7 @@ Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 
 """
-
+from typing import Any
 from homeassistant.helpers.typing import StateType
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -19,12 +19,25 @@ from .const import (
     AtagOneSensorEntityDescription
 )
 
-from . import AtagOneEntity
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    entity_registry as er,
+)
 
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
+from .entity import AtagOneEntity
+
+async def async_setup_entry(
+    hass: HomeAssistant, 
+    config_entry: ConfigEntry, 
+    async_add_entities: AddEntitiesCallback
+) -> None:
     """Initialize sensor platform from config entry."""
+    
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
+
     async_add_entities([AtagOneSensor(coordinator, sensor) for sensor in ATAG_SENSOR_ENTITIES])
+    
     
 
 class AtagOneSensor(AtagOneEntity, SensorEntity):
@@ -37,22 +50,10 @@ class AtagOneSensor(AtagOneEntity, SensorEntity):
 
         super().__init__(coordinator, description)
  
-        self.coordinator = coordinator
-        
+        self.coordinator = coordinator    
         self.entity_description = description
-        self._sensor_prefix = "atag_one"
 
-        self._attr_unique_id = f"{self._sensor_prefix}_{self.entity_description.key}"
-        self._attr_name = f"{self.entity_description.name}"
-        self._attr_translation_key = f"{self.entity_description.translation_key}"
-        self._attr_device_class = self.entity_description.device_class
-        self._attr_entity_category = self.entity_description.entity_category
-        self._attr_native_unit_of_measurement = self.entity_description.native_unit_of_measurement
         
-        """
-        _LOGGER.error("sensor: %s %s", self._attr_unique_id,description)
-        """
-    
     @property
     def native_value(self) -> StateType:
         """Return the state of the sensor."""
