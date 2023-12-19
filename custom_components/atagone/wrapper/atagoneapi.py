@@ -6,6 +6,7 @@ https://github.com/herikw/home-assistant-custom-components
 """
 
 from datetime import datetime, timedelta
+from typing import Optional
 import aiohttp
 import asyncio
 import atexit
@@ -40,11 +41,21 @@ class AtagStatusException(Exception):
     
 class AtagConnectException(Exception):
     """ Atag Connection Exception """
+    
+class AtagDiscovery(asyncio.DatagramProtocol):
+    """Atag Datagram Protocol Discovery class """
+    
+    def connection_made(self, transport):
+        self.transport = transport
+        self.data = asyncio.Future()
+
+    def datagram_received(self, data, addr):
+        self.data.set_result([data, addr])
 
 class AtagOneApi(AtagOneEntity):
     """Wrapper class to the Atag One Local API"""
 
-    def __init__(self, host=None, port=10000):
+    def __init__(self, host: Optional[str] = None, port: Optional[int] = 10000):
         self.data = None
         self.paired = False
         self.heating = False
@@ -54,35 +65,31 @@ class AtagOneApi(AtagOneEntity):
 
         self._session = aiohttp.ClientSession()
         atexit.register(self._close)
-
-        if self.host is None:
-            self.host = self.discover()
-
-    def discover(self) -> str:
-        """Find the ATAG One Thermostat on the local network"""
-
-        s_connection = socket(AF_INET, SOCK_DGRAM)
-        s_connection.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        s_connection.settimeout(60)
-        s_connection.bind(("", 11000))
-
-        try:
-            for i in range(3):
-                data, (addr, bport) = s_connection.recvfrom(37, 0)
-                if ("ONE " in str(data)) and (addr):
-                    s_connection.close()
-                    _LOGGER.warning("find ATAG new ip: %s", str(addr))
-                    return str(addr)
-        except HTTPError:
-            _LOGGER.warning("timeout exceeded finding ATAG One")
-            return self._host
-        except timeout:
-            _LOGGER.warning("find ATAG One Timeout")
-            return self._host
     
-
+    async def async_discover(self):
+        """ find the atag one thermostat on the local network """
+        
+        loop = asyncio.get_running_loop()
+        transport, protocol = await loop.create_datagram_endpoint(
+            lambda: AtagDiscovery(),
+            local_addr=('0.0.0.0', 11000))
+        try:
+            data, (addr, bport) = await asyncio.wait_for(protocol.data, timeout=30)
+        except:
+            transport.close()
+            """ no atag one found on the local network """
+            return None
+        finally:
+            transport.close()
+            return addr
+    
     async def async_create_vacation(
-        self, start_date=None, start_time=None, end_date=None, end_time=None, heat_temp=None ) -> bool:
+        self, 
+        start_date: Optional[int] = None, 
+        start_time: Optional[int] = None, 
+        end_date: Optional[int]  = None, 
+        end_time: Optional[int] = None, 
+        heat_temp: Optional[float] = None ) -> bool:
         """create vacation on the Atag One"""
 
         if not start_date and not start_time and not end_date and not end_time:
@@ -104,17 +111,18 @@ class AtagOneApi(AtagOneEntity):
         duration = end_dt_epoch - start_dt_epoch
         
         json_payload = AtagJson().create_vacation_json(start_dt_epoch, float(heat_temp), duration )
-        response = await self._async_send_request(UPDATE_PATH, json_payload)
-        if response:
-            return True
+        if json_payload is not None:
+            response = await self._async_send_request(UPDATE_PATH, json_payload)
+            if response:
+                return True
         
         return False
 
     async def async_cancel_vacation(self) -> bool:
         """cancel vacation on the Atag One"""
                 
-        jsonpayload = AtagJson().cancel_vacation_json()
-        response = await self._async_send_request(UPDATE_PATH, jsonpayload)
+        json_payload = AtagJson().cancel_vacation_json()
+        response = await self._async_send_request(UPDATE_PATH, json_payload)
         if response:
             return True
         
@@ -124,6 +132,7 @@ class AtagOneApi(AtagOneEntity):
         
         jsonpayload = AtagJson().update_for(field_to_update, value)
         if jsonpayload:
+            _LOGGER.error(jsonpayload)
             response = await self._async_send_request(UPDATE_PATH, jsonpayload) 
             if response:
                 return True
@@ -153,33 +162,30 @@ class AtagOneApi(AtagOneEntity):
             self.heating = False
 
         return True
+    
+    async def _async_send_request(self, request_path, json_payload, is_retry: bool = False ) -> None:
+        "" "send async web request" ""
+        
+        async with aiohttp.ClientSession() as session:
+            response = await session.request(
+                "POST", BASE_URL.format(self.host, self.port, request_path), data=str.encode(json_payload)
+            )   
+            if not response.ok:
+                match response.status:
+                    case 404:
+                        raise Exception("404: page not found")
+                    case _:
+                        if not is_retry:
+                            await asyncio.sleep(5)
+                            return await self.__async_request(
+                                request_path, json_payload, is_retry=True
+                            )
+                        raise Exception(response.status)
 
-    async def _async_send_request(self, request_path, json_payload) -> None:
-        """send async web request"""
-
-        client_timeout = aiohttp.ClientTimeout(total=60, connect=30)
-        tries = 0
-        while tries < 3:
-            try:
-                async with self._session.post(
-                    BASE_URL.format(self.host, self.port, request_path),
-                    data=str.encode(json_payload),
-                    timeout=client_timeout,
-                ) as resp:
-                    response = await resp.json()
-                    if(self.__check_response(request_path, response)):
-                        return response
-            except (
-                aiohttp.ClientConnectorError,
-                asyncio.TimeoutError,
-            ) as ex:
-                _LOGGER.error(
-                    "Atag connection error %s",
-                    str(ex),
-                )
-                
-            tries += 1
-
+            if response.content_length and response.content_length > 0:
+                json = await response.json()
+                if(self.__check_response(request_path, response)):
+                        return json
         return None
     
     async def __check_response(self, request_path, reponse) -> bool:

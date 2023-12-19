@@ -10,15 +10,9 @@ import asyncio
 
 from homeassistant.components.switch import SwitchEntity
 from .const import DEFAULT_NAME, DOMAIN
-from collections.abc import Callable
-from dataclasses import dataclass
-
 import logging
-
 from abc import ABC
-from collections.abc import Callable, Coroutine
-from .atagoneapi import AtagOneApi
-from dataclasses import dataclass
+
 from .const import ATAG_SWITCH_ENTITIES, AtagOneSwitchEntityDescription
 
 _LOGGER = logging.getLogger(__name__)

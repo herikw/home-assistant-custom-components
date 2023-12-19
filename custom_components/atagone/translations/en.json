@@ -19,44 +19,21 @@
       "all_configured": "All Atag One Thermostats are already configured",
       "unknown": "Unknown error occurred",
       "cannot_connect": "Unable to connect to the Atag One Thermostat",
-      "already_configured": "Atag One Thermostat is already configured"
+      "already_configured": "Atag One Thermostat is already configured",
+      "reconnect_successful": "Atag One Thermostat Reconnect successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Scan Interval (seconds)"
+        },
+        "title": "Configure Atag One"
+      }
     }
   },
   "entity": {
-    "climate": {
-      "atag_one": {
-        "name": "Thermostat",
-        "state": {
-          "auto": "Auto",
-          "heat": "Heat"
-        }
-      },
-      "hvac_mode": {
-        "state": {
-          "auto": "Auto",
-          "heat": "Heat"
-        }
-      },
-      "preset_mode": {
-        "name": "Preset",
-        "state": {
-          "Manual": "Manual",
-          "Auto": "Auto",
-          "Holiday": "Vacation",
-          "Extend": "Extend",
-          "Firepace": "Firepace"
-        }
-      },
-      "current_temperature": {
-        "name": "Huidige temperature"
-      },
-      "temperature": {
-        "name": "Doel temperatuur"
-      },
-      "preset_modes": {
-        "name": "Voorinstellingen"
-      }
-    },
     "select": {
       "ch_heating_type": {
         "name": "Heating type",
@@ -252,7 +229,7 @@
           "Partly Cloudy": "Partly Cloudy"
         }
       },
-      "burner": {
+      "rel_mod_level": {
         "name": "Burner"
       },
       "boiler_errors": {

@@ -14,11 +14,7 @@ It reads the Current Temperature and other parameters like central heating water
 * use HACS (Home Assistant Community Store) to install this component into your HA instance
 * Component Name "Atag One"
 
-### Upgrade
-
-Remove the "climate: - platform: atagone" and "Sensor - platform: atagone" sections from your configuration.yaml first and restart Home Assistant.
-
-Then add the new component using
+Add the new component using
 
 [![my badge](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=atagone)
 
@@ -32,7 +28,7 @@ The configuration is now done in the Homeassistant UI during the installation
 
 1. Specify the IP address or Hostname of your ATAG One device into the host field
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneDetails.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/Configuration.png?raw=true "Screenshot")
 
 The port is the default port that Atag One device is using. When using a reverse proxy, you probably need to change this. 
 

@@ -15,7 +15,7 @@ class AtagOneEntity(object):
         self.heating: bool = False
 
     @property
-    def id(self):
+    def id(self) -> str:
         """Return the ID of the Atag One."""
         if not self.data:
             return None
@@ -55,6 +55,10 @@ class AtagOneEntity(object):
     @property
     def mode(self):
         return self.controldata.get("ch_control_mode", 0)
+    
+    @property
+    def vacation_duration(self):
+        return self.controldata.get("vacation_duration", 0)
 
     @property
     def preset(self):
@@ -86,7 +90,6 @@ class AtagOneEntity(object):
         for sensor in self.controldata:
             sensors[sensor] = self.controldata.get(sensor, 0)
 
-        sensors["rel_mod_level"] = self.rel_mod_level
         sensors["voltage"] = self.voltage
         sensors["power_cons"] = self.power_cons
         sensors["rssi"] = self.rssi
@@ -95,17 +98,6 @@ class AtagOneEntity(object):
 
         return sensors
     
-    @property
-    def rel_mod_level(self):
-        """Calculate the burner level in %"""
-
-        if int(self.reportdata.get("boiler_status", 0)) > 0:
-            mml = int(self.reportdata["details"].get("min_mod_level", 0))
-            rml = int(self.reportdata["details"].get("rel_mod_level", 0))
-            return (mml + (1 - mml)) * rml
-        else:
-            return 0
-
     @property
     def voltage(self):
         """convert Voltage mV into V"""
@@ -120,7 +112,7 @@ class AtagOneEntity(object):
         """convert power_cons to m3/h """
         power_cons = int(self.reportdata.get("power_cons", 0))
         if power_cons > 0:
-            return power_cons / 10000
+            return power_cons / 100000
         return 0
     
     @property
