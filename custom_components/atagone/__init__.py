@@ -6,7 +6,7 @@ https://github.com/herikw/home-assistant-custom-components
 """
 
 from asyncio import timeout
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_SCAN_INTERVAL_SECONDS
 from datetime import timedelta
 from typing import Any
 import logging
@@ -21,13 +21,14 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.const import (
     CONF_HOST, 
-    CONF_PORT
+    CONF_PORT,
+    CONF_SCAN_INTERVAL
 )
 
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import device_registry as dr
 
-from .atagoneapi import AtagOneApi
+from .wrapper.atagoneapi import AtagOneApi
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,13 +57,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
 
     atagapi = AtagOneApi(entry.data[CONF_HOST],  entry.data[CONF_PORT])
+    
+    scan_interval_seconds = entry.options.get(
+            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_SECONDS
+        )
 
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
         name=DOMAIN.title(),
         update_method=_async_update_data,
-        update_interval=timedelta(seconds=30),
+        update_interval=timedelta(seconds=scan_interval_seconds)
     )
 
     await coordinator.async_config_entry_first_refresh()

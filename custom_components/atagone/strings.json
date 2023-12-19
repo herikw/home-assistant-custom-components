@@ -1,7 +1,8 @@
 {
   "config": {
     "error": {
-      "register_failed": "Failed to register, please try again"
+      "register_failed": "Failed to register, please try again",
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
     },
     "step": {
       "user": {
@@ -19,7 +20,43 @@
       "all_configured": "All Atag One Thermostats are already configured",
       "unknown": "Unknown error occurred",
       "cannot_connect": "Unable to connect to the Atag One Thermostat",
-      "already_configured": "Atag One Thermostat is already configured"
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reconnect_successful": "Atag One Thermostat Reconnect successful"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure Atag One Thermostat",
+        "data": {
+          "scan_interval": "Scan Interval (seconds)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "atag_one": {
+        "name": "Thermostat",
+        "state_attributes" : {
+          "preset_mode": {
+            "name": "Preset",
+            "state": {
+              "Manual": "Manual",
+              "Auto": "Auto",
+              "Holiday": "Vacation",
+              "Extend": "Extend",
+              "Firepace": "Firepace"
+            }
+          },
+          "hvac_mode": {
+            "state": {
+              "auto": "Auto",
+              "heat": "Heat"
+            }
+          }
+        }
+      }
     }
   }
 }

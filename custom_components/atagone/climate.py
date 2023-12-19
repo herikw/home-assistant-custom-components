@@ -36,7 +36,8 @@ from .const import (
     DEFAULT_MAX_TEMP,
     ControlProperty,
     AtagOneClimateEntityDescription,
-    ATAG_CLIMATE_ENTITY
+    ATAG_CLIMATE_ENTITY,
+    PresetMode
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,11 +57,11 @@ HA_HVAC_MODE_TO_ATAG = {HVACMode.AUTO: 1, HVACMode.HEAT: 0}
 ATAG_HVAC_MODE_TO_HA = {v: k for k, v in HA_HVAC_MODE_TO_ATAG.items()}
 
 HA_PRESETS_TO_ATAG = { 
-    "Manual": 1,
-    "Auto": 2,
-    "Holiday": 3,
-    "Extend": 4,
-    "Fireplace": 5
+    PresetMode.MANUAL: 1,
+    PresetMode.AUTO: 2,
+    PresetMode.HOLIDAY: 3,
+    PresetMode.EXTEND: 4,
+    PresetMode.FIREPLACE: 5
 }
 ATAG_PRESETS_TO_HA = {v: k for k, v in HA_PRESETS_TO_ATAG.items()}
 
@@ -227,25 +228,27 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             return self._max_temp
 
     @property
-    def hvac_modes(self) -> list[str]:
+    def hvac_modes(self) -> list[HVACMode]:
         """Return the list of available hvac operation modes. """
         return [HVACMode.HEAT, HVACMode.AUTO]
 
     @property
-    def hvac_mode(self) -> str:
+    def hvac_mode(self) -> HVACMode:
         atag_hvac = self.coordinator.data.mode
         return ATAG_HVAC_MODE_TO_HA.get(atag_hvac)
     
     @property
     def preset_mode(self) -> str:
-        """Set new target hvac mode."""
         preset_mode = self.coordinator.data.preset
         return ATAG_PRESETS_TO_HA.get(preset_mode)
+
+    @property
+    def preset_modes(self) -> list[PresetMode]:
+        return [*HA_PRESETS_TO_ATAG]
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
         """Set new target hvac mode."""
         atag_hvac = HA_HVAC_MODE_TO_ATAG.get(hvac_mode, HVACMode.AUTO)
-        
         status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_CONTROL_MODE, atag_hvac)
         if not status:
             _LOGGER.error("set_hvac_mode: %s", status)
@@ -255,14 +258,26 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
             
-    async def async_set_preset_mode(self, preset_mode: str) -> None:
+    async def async_set_preset_mode(self, preset_mode: PresetMode) -> None:
         """Set new preset mode."""
-        atag_preset = HA_PRESETS_TO_ATAG.get(preset_mode, "Auto" )
+        
+        vacation_duration = self.coordinator.data.vacation_duration
+        if preset_mode == PresetMode.HOLIDAY:
+            if vacation_duration > 0:
+                await self.coordinator.data.async_cancel_vacation()
+                preset_mode = PresetMode.AUTO
+            else:
+                await self.coordinator.data.async_create_vacation()
+        else:
+            if vacation_duration > 0:
+                await self.coordinator.data.async_cancel_vacation()
+                
+        atag_preset = HA_PRESETS_TO_ATAG.get(preset_mode, PresetMode.AUTO )
         status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE, atag_preset)
         if not status:
             _LOGGER.error("set_preset_mode: %s", status)
             return None
-        
+            
         self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()

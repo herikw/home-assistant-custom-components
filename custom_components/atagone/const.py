@@ -10,13 +10,13 @@ https://github.com/herikw/home-assistant-custom-components
 
 import logging
 from abc import ABC
+from typing import final
 
 _LOGGER = logging.getLogger(__package__)
 
-from enum import Enum, IntEnum, unique
-from typing import Final
+from enum import StrEnum
 from collections.abc import Callable, Coroutine
-from .atagoneapi import AtagOneApi
+from .wrapper.atagoneapi import AtagOneApi
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
@@ -44,6 +44,8 @@ DEFAULT_TIMEOUT = 30
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 27
 DEFAULT_PORT = 10000
+
+DEFAULT_SCAN_INTERVAL_SECONDS: final = 60
 
 ISOLATION_LEVELS = { 
     "poor": 1,
@@ -112,6 +114,14 @@ BOILER_STATES = {
     10: {"state": "Central", "icon": "mdi:fire"},
     12: {"state": "Water", "icon": "mdi:fire"}
 }
+
+class PresetMode(StrEnum):
+    """ Supported Preset Modes """  
+    MANUAL = "manual"
+    AUTO = "auto"
+    HOLIDAY = "holiday"
+    EXTEND = "extend"
+    FIREPLACE = "fireplace"
     
 class ControlProperty:
     CH_STATUS: str = "ch_status"
@@ -139,19 +149,26 @@ class ConfigurationProperty:
     COMFORT_SETTINGS: str = "comfort_settings"
     CH_BUILDING_SIZE: str = "ch_building_size"
     CH_ISOLATION: str = "ch_isolation"
-    ROOM_TEMP_OFFS: str = "room_temp_offs"
-    OUTS_TEMP_OFFS: str = "outs_temp_offs"
     CH_VACATION_TEMP: str = "ch_vacation_temp"
     CH_HEATING_TYPE: str = "ch_heating_type"
     CH_TEMP_MAX: str = "ch_temp_max"
-    START_VACATION: str = "start_vacation"
-    WD_K_FACTOR: str = "wd_k_factor"
-    WD_EXPONENT: str = "wd_exponent"
-    WD_TEMP_OFFSET: str = "wd_temp_offs"
+    CH_MODE_VACATION: str = "ch_mode_vacation"
+    CH_MODE_EXTEND: str = "ch_mode_extend"
+    CH_MAX_SET: str = "ch_max_set"
+    CH_MIN_SET: str = "ch_min_set"
     DHW_LEGION_DAY: str = "dhw_legion_day"
     DHW_LEGION_TIME: str = "dhw_legion_time"
     DHW_BOILER_CAP: str = "dhw_boiler_cap"
+    DHW_MAX_SET: str = "dhw_max_set"
+    DHW_MIN_SET: str = "dhw_min_set"
+    DHW_LEGION_ENABLED: str = "dhw_legion_enabled"
+    ROOM_TEMP_OFFS: str = "room_temp_offs"
+    OUTS_TEMP_OFFS: str = "outs_temp_offs"
+    WD_K_FACTOR: str = "wd_k_factor"
+    WD_EXPONENT: str = "wd_exponent"
+    WD_TEMP_OFFSET: str = "wd_temp_offs"
     CLIMATE_ZONE: str = "climate_zone"
+    START_VACATION: str = "start_vacation"
     CANCEL_VACATION: str = "cancel_vacation_json"
     CREATE_VACATION: str = "create_vacation_json"
     LANGUAGE: str = "language"
@@ -160,16 +177,9 @@ class ConfigurationProperty:
     TIME_FORMAT: str = "timeformat"
     INSTALLER_ID: str = "installer_id"
     DISP_BRIGHTNESS: str = "disp_brightness"
-    CH_MODE_VACATION: str = "ch_mode_vacation"
-    CH_MODE_EXTEND: str = "ch_mode_extend"
     SUPPORT_CONTRACT: str = "support_contact"
     PRIVACY_MODE: str = "privacy_mode"
-    CH_MAX_SET: str = "ch_max_set"
-    CH_MIN_SET: str = "ch_min_set"
-    DHW_MAX_SET: str = "dhw_max_set"
-    DHW_MIN_SET: str = "dhw_min_set"
     MU: str = "mu"
-    DHW_LEGION_ENABLED: str = "dhw_legion_enabled"
     WDR_TEMP_INFLUENCE: str = "wdr_temps_influence"
     MAX_PREHEAT: str = "max_preheat"
     
@@ -183,14 +193,14 @@ class ReportItems:
     DBG_OUTSIDE_TEMP: str = "dbg_outside_temp"
     PCB_TEMP: str = "pcb_temp"
     CH_SETPOINT: str =  "ch_setpoint"
-    DHW_WATER_TEMP:str = "dhw_water_temp"
-    CH_WATER_TEMP: str = "ch_water_temp"
-    DHW_WATER_PRES: str = "dhw_water_pres"
     CH_WATER_PRES: str = "ch_water_pres"
     CH_RETURN_TEMP: str = "ch_return_temp"
+    CH_WATER_TEMP: str = "ch_water_temp"
+    CH_TIME_TO_TEMP: str = "ch_time_to_temp"
+    DHW_WATER_TEMP:str = "dhw_water_temp"
+    DHW_WATER_PRES: str = "dhw_water_pres"
     BOILER_STATUS: str = "boiler_status"
     BOILER_CONFIG: str = "boiler_config"
-    CH_TIME_TO_TEMP: str = "ch_time_to_temp"
     SHOW_SET_TEMP: str = "shown_set_temp"
     POWER_CONS: str = "power_cons"
     TOUT_AVG: str = "tout_avg"
@@ -241,7 +251,7 @@ class AtagOneClimateEntityDescription(ClimateEntityDescription, AtagOneBaseEntit
 ATAG_CLIMATE_ENTITY = (
     AtagOneClimateEntityDescription(
         key=f"{DOMAIN}",
-        name=f"{DEFAULT_NAME}",
+        name="",
         translation_key="atag_one",
         unit_of_measurement=UnitOfTemperature.CELSIUS
     )
@@ -292,7 +302,6 @@ ATAG_SENSOR_ENTITIES = (
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.REL_MOD_LEVEL}",
         translation_key=f"{ReportItems.Details.REL_MOD_LEVEL}",
-        name=f"Burner",
         native_unit_of_measurement="%",
         icon="mdi:fire",
         entity_registry_enabled_default=True,
@@ -633,7 +642,6 @@ class AtagOneSelectEntityDescription(SelectEntityDescription):
 
     get_current_option: Callable[[AtagOneApi], Coroutine] = None
     select_option: Callable[[AtagOneApi], Coroutine] = None
-
         
 ATAG_SELECT_ENTITIES = (
     AtagOneSelectEntityDescription(
@@ -698,7 +706,7 @@ class AtagOneSwitchEntityDescription(SwitchEntityDescription):
 ATAG_SWITCH_ENTITIES = (
     AtagOneSwitchEntityDescription(
         key=f"{ConfigurationProperty.SUMMER_ECO_MODE}",
-        name="Summer ECO mode",
+        translation_key=f"{ConfigurationProperty.SUMMER_ECO_MODE}",
         icon="mdi:leaf",
         device_class=SwitchDeviceClass.SWITCH,
         get_native_value=lambda entity, value: entity.coordinator.data.configurationdata.get(value),

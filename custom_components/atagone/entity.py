@@ -35,6 +35,11 @@ class AtagOneEntity(CoordinatorEntity):
     def unique_id(self):
         """Return the unique id."""        
         return f"{self.data.id}_{self.entity_description.key}"
+    
+    @property
+    def available(self) -> bool:
+        """Return available only if device not init or failed states."""
+        return isinstance(self.data.id, str)
 
 
     @property

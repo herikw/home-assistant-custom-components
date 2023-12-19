@@ -5,7 +5,6 @@ Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 
 """
-from typing import Any
 from homeassistant.helpers.typing import StateType
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -17,12 +16,6 @@ from .const import (
     WEATHER_STATES, BOILER_STATES, 
     ATAG_SENSOR_ENTITIES, 
     AtagOneSensorEntityDescription
-)
-
-from homeassistant.helpers import (
-    config_validation as cv,
-    device_registry as dr,
-    entity_registry as er,
 )
 
 from .entity import AtagOneEntity
@@ -37,8 +30,6 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
 
     async_add_entities([AtagOneSensor(coordinator, sensor) for sensor in ATAG_SENSOR_ENTITIES])
-    
-    
 
 class AtagOneSensor(AtagOneEntity, SensorEntity):
     """Representation of a AtagOne Sensor."""
@@ -67,6 +58,7 @@ class AtagOneSensor(AtagOneEntity, SensorEntity):
             cstate = int(state) & 14
             if BOILER_STATES[cstate] is None:
                 _LOGGER.error("Unkown Boiler State %s", cstate)
+                return None
             else:
                 self._attr_icon = BOILER_STATES[cstate].get("icon")
             return BOILER_STATES[cstate].get("state")

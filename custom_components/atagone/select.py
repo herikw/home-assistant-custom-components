@@ -9,20 +9,19 @@ https://github.com/herikw/home-assistant-custom-components
 
 import logging
 import asyncio
-from .const import (DEFAULT_NAME, DOMAIN,
-                    ISOLATION_LEVELS,
-                    ISOLATION_LEVELS_REV,
-                    HEATING_TYPES,
-                    HEATING_TYPES_REV,
-                    BUILDING_SIZE,
-                    BUILDING_SIZE_REV,
-                    TEMP_INFLUENCE,
-                    TEMP_INFLUENCE_REV,
-                    FROST_PROTECTION,
-                    FROST_PROTECTION_REV         
+from .const import (
+    DOMAIN,
+    ISOLATION_LEVELS,
+    ISOLATION_LEVELS_REV,
+    HEATING_TYPES,
+    HEATING_TYPES_REV,
+    BUILDING_SIZE,
+    BUILDING_SIZE_REV,
+    TEMP_INFLUENCE,
+    TEMP_INFLUENCE_REV,
+    FROST_PROTECTION,
+    FROST_PROTECTION_REV         
 )
-from collections.abc import Callable
-from dataclasses import dataclass
 
 from homeassistant.components.select import SelectEntity
 from .const import ATAG_SELECT_ENTITIES, AtagOneSelectEntityDescription
@@ -37,10 +36,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     """Initialize sensor platform from config entry."""
     
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([AtagOneSwitch(coordinator, description) for description in ATAG_SELECT_ENTITIES])
+    async_add_entities([AtagOneSelect(coordinator, description) for description in ATAG_SELECT_ENTITIES])
 
-class AtagOneSwitch(AtagOneEntity, SelectEntity):
-    """Representation of a AtagOne Sensor."""
+class AtagOneSelect(AtagOneEntity, SelectEntity):
+    """Representation of AtagOne Select."""
 
     entity_description: AtagOneSelectEntityDescription
     
