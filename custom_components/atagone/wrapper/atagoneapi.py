@@ -132,7 +132,6 @@ class AtagOneApi(AtagOneEntity):
         
         jsonpayload = AtagJson().update_for(field_to_update, value)
         if jsonpayload:
-            _LOGGER.error(jsonpayload)
             response = await self._async_send_request(UPDATE_PATH, jsonpayload) 
             if response:
                 return True
