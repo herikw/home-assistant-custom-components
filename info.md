@@ -10,7 +10,6 @@ Component to interface with the API of the ATAG One thermostat on the local netw
 It reads the Current Temperature and other parameters like central heating water pressure and outside temperature. It currently only supports Heating as operation mode.
 
 {% if not installed %}
-
 ### Installation
 
 1. Click install.
@@ -18,11 +17,7 @@ It reads the Current Temperature and other parameters like central heating water
 
 {% endif %}
 
-### Upgrade
-
-Remove the "climate: - platform: atagone" and "Sensor - platform: atagone" sections from your configuration.yaml first and restart Home Assistant.
-
-Then add the new component using
+Add the new component using
 
 [![my badge](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=atagone)
 
@@ -32,13 +27,13 @@ Use the following link to add the integration to you HA installation
 
 [![my badge](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start?domain=atagone)
 
-The configuration is now done in the Homeassistant UI during the installation
+The configuration is now done in the Homeassistant UI during the installation.
 
-Specify the IP address or Hostname of your ATAG One device into the host field
+1. The IP address will be detected automatically, but you can also specify the IP address or Hostname of your ATAG One device into the host field
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneDetails.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/IPaddress.png?raw=true "Screenshot")
 
-The port is the default port that Atag One device is using. When using a reverse proxy, you probably need to change this
+The port is the default port that Atag One device is using. When using a reverse proxy, you probably need to change this. 
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneSucces.png?raw=true "Screenshot")
 
@@ -46,18 +41,28 @@ You will now see the component displayed in the integration dashboard.
 
 In the next step select the Area you want to use for this component
 
+### Scan Interval
+
+There is now also an option to specify the scan interval. Sometimes it's needed to change this because the Atag One Thermostat seems to become overloaden when scanning too frequently.
+Choose at least a value of 30 or higher.
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/scaninterval.png?raw=true "Screenshot")
+
+
 ### Overview
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneNew.png?raw=true "Screenshot")
+The new climate card in the latest version of Home Assistant
+
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/Thermostat.png?raw=true "Screenshot")
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneDetails.png?raw=true "Screenshot")
 
 ## ATAG One Thermostat Sensor Component
 
-It reads the ATAG ONE thermostat report data and display these as sensors in HA
-Initially it will deploy 51 sensors which can be disabled if a sensor is not needed
+The sensor component card now displays the most common sensors and their value. GAS Sensor component now give a good representation of GAS that's been used by the heater.
+All other sensors are now on the Diagnostics Card.
 
-![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/AoneSensors.png?raw=true "Screenshot")
+![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/sensorsnew.png?raw=true "Screenshot")
 
 It's no longer needed to configure the sensors in configuration.yaml
 Sensors can be added or removed by removing or adding the required entry(s) in the UI
