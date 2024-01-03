@@ -241,7 +241,7 @@ class ReportItems:
         KI: str = "KI"
         
 @dataclass
-class AtagOneBaseEntityDescription(EntityDescription, ABC):
+class AtagOneBaseEntityDescription(EntityDescription):
     """Describes AtagOne base entity."""
         
 @dataclass
