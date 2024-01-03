@@ -68,6 +68,7 @@ class AtagOneApi(AtagOneEntity):
     
     async def async_discover(self):
         """ find the atag one thermostat on the local network """
+        addr = None
         
         loop = asyncio.get_running_loop()
         transport, protocol = await loop.create_datagram_endpoint(

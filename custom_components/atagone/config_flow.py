@@ -47,17 +47,28 @@ class AtagConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle a flow initialized by the user."""
         
         ip_address = await AtagOneApi().async_discover()
-
-        if user_input is None:
-            return self.async_show_form(
-                step_id="user", 
-                data_schema=vol.Schema(
-                    {
-                        vol.Required(CONF_HOST, default=ip_address): str,
-                        vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int)
-                    }
-                )   
-            )
+        if ip_address is not None:
+            if user_input is None:
+                return self.async_show_form(
+                    step_id="user", 
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(CONF_HOST, default=ip_address): str,
+                            vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int)
+                        }
+                    )   
+                )
+        else:
+            if user_input is None:
+                return self.async_show_form(
+                    step_id="user", 
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required(CONF_HOST, default=None): str,
+                            vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int)
+                        }
+                    )   
+                )
             
         errors = {}
         
