@@ -159,13 +159,13 @@ class Report:
 @dataclass
 class Schedule:
     base_temp: Optional[float] = None
-    entries: Optional[List[List[List[float]]]] = None
+    entries: Optional[List[List[List[float]]]] = field(default=None, metadata=config(exclude=lambda f: f is None))
 
 @dataclass_json
 @dataclass
 class Schedules:
-    ch_schedule: Optional[Schedule] = None
-    dhw_schedule: Optional[Schedule] = None
+    ch_schedule: Optional[Schedule] = field(default=None, metadata=config(exclude=lambda f: f is None))
+    dhw_schedule: Optional[Schedule] = field(default=None, metadata=config(exclude=lambda f: f is None))
 
 @dataclass_json
 @dataclass
@@ -202,7 +202,7 @@ class AtagRetrieveReply:
 class RetrieveMessage:
     seqnr: int = 0
     account_auth: AccountAuth = None
-    info: None = 77
+    info: None = 127
     
 @dataclass_json
 @dataclass
@@ -282,6 +282,16 @@ class AtagJson:
         self._UpdateJson()
         self.update.update_message.control=Control(dhw_temp_setp=target_temp)
         return self.update.to_json(sort_keys=False)
+    
+    def dhw_schedule_json(self, schedule: Schedule) -> None:
+        self._UpdateJson()
+        self.update.update_message.schedules = Schedules(dhw_schedule=schedule)
+        return self.update.to_json(sort_keys=False)
+    
+    def ch_schedule_json(self, schedule: Schedule) -> None:
+        self._UpdateJson()
+        self.update.update_message.schedules = Schedules(ch_schedule=schedule)
+        return self.update.to_json(sort_keys=False)
 
     def dhw_mode_json(self, mode: int) -> None:
         self._UpdateJson()
@@ -314,6 +324,16 @@ class AtagJson:
     def summer_eco_mode_json(self, mode: int) -> None:
         self._UpdateJson()
         self.update.update_message.configuration = Configuration(summer_eco_mode=mode)
+        return self.update.to_json(sort_keys=False)
+    
+    def summer_eco_temp_json(self, eco_temp: float) -> None:
+        self._UpdateJson()
+        self.update.update_message.configuration = Configuration(summer_eco_temp=eco_temp)
+        return self.update.to_json(sort_keys=False)
+    
+    def ch_vacation_temp_json(self, heat_temp: float) -> None:
+        self._UpdateJson()
+        self.update.update_message.configuration = Configuration(ch_vacation_temp=heat_temp)
         return self.update.to_json(sort_keys=False)
       
     def ch_building_size_json(self, building_size: int) -> None:

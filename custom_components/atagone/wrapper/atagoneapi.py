@@ -138,7 +138,33 @@ class AtagOneApi(AtagOneEntity):
                 return True
              
         return False
-            
+    
+    async def async_dhw_schedule_base_temp(self, value) -> bool:
+        """Set the DHW temperature setpoint"""
+        
+        dhw_schedule = self.data["schedules"].get("dhw_schedule")
+        dhw_schedule["base_temp"] = value
+        jsonpayload = AtagJson().dhw_schedule_json(dhw_schedule)
+        if jsonpayload:
+            response = await self._async_send_request(UPDATE_PATH, jsonpayload) 
+            if response:
+                return True
+             
+        return False
+    
+    async def async_ch_schedule_base_temp(self, value) -> bool:
+        """Set the CH temperature setpoint"""
+        
+        ch_schedule = self.data["schedules"].get("ch_schedule")
+        ch_schedule["base_temp"] = value
+        jsonpayload = AtagJson().ch_schedule_json(ch_schedule)
+        if jsonpayload:
+            response = await self._async_send_request(UPDATE_PATH, jsonpayload) 
+            if response:
+                return True
+             
+        return False
+       
     async def async_fetch_data(self) -> dict:
         """Get state of all sensors and do some conversions"""
 

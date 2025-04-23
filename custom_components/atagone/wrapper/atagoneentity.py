@@ -36,7 +36,17 @@ class AtagOneEntity(object):
     def scheduledata(self):
         """Return Schedules Json Data"""
         return self.data["schedules"]
-
+    
+    @property
+    def chscheduledata(self):
+        """Return DHW Schedules Json Data"""
+        return self.scheduledata["ch_schedule"]
+    
+    @property
+    def dhwscheduledata(self):
+        """Return DHW Schedules Json Data"""
+        return self.scheduledata["dhw_schedule"]
+    
     @property
     def configurationdata(self):
         """Return Configuration Json Data"""

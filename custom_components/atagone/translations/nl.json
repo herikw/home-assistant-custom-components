@@ -98,7 +98,10 @@
         "name": "Correctie Binnentemp"
       },
       "summer_eco_temp": {
-        "name": "Temp Vakantieperiode"
+        "name": "Zomer ECO Temp"
+      },
+      "ch_vacation_temp": {
+        "name": "Vakantie Temp"
       },
       "dhw_temp_setp": {
         "name": "Warmwater Basistemp"
@@ -263,9 +266,6 @@
       },
       "room_temp_offs": {
         "name": "Kamer Temp Correctie"
-      },
-      "summer_eco_temp": {
-        "name": "Zomer Eco Temp"
       }
     }
   }

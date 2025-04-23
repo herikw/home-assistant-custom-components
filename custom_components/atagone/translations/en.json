@@ -100,6 +100,9 @@
       "summer_eco_temp": {
         "name": "Summer ECO Temp"
       },
+      "ch_vacation_temp": {
+        "name": "Vacation Temp"
+      },
       "dhw_temp_setp": {
         "name": "DHW Setpoint"
       }

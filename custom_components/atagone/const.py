@@ -240,6 +240,19 @@ class ReportItems:
         KP: str = "KP"
         KI: str = "KI"
         
+class Schedules:
+    CH_SCHEDULE: str = "ch_schedule"
+    DHW_SCHEDULE: str = "dhw_schedule"
+    
+    class CH_Schedule:
+        BASE_TEMP: str = "base_temp"
+        SCHEDULE: str = "schedule"
+        
+    class DHW_Schedule:
+        BASE_TEMP: str = "base_temp"
+        SCHEDULE: str = "schedule"     
+    
+        
 @dataclass
 class AtagOneBaseEntityDescription(EntityDescription):
     """Describes AtagOne base entity."""
@@ -764,6 +777,20 @@ ATAG_NUMBER_ENTITIES = (
         set_native_value=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
     ),
     AtagOneNumberEntityDescription(
+        key=f"{ConfigurationProperty.CH_VACATION_TEMP}",
+        translation_key=f"{ConfigurationProperty.CH_VACATION_TEMP}",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        mode="slider",
+        device_class=NumberDeviceClass.TEMPERATURE,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=True,
+        native_min_value=10,
+        native_max_value=25,
+        native_step=0.5,
+        get_native_value=lambda entity, function: entity.coordinator.data.configurationdata.get(function),
+        set_native_value=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
+    ),
+    AtagOneNumberEntityDescription(
         key=f"{ConfigurationProperty.SUMMER_ECO_TEMP}",
         translation_key=f"{ConfigurationProperty.SUMMER_ECO_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
@@ -789,6 +816,6 @@ ATAG_NUMBER_ENTITIES = (
         native_max_value=65,
         native_step=1,
         get_native_value=lambda entity, function: entity.coordinator.data.controldata.get(function),
-        set_native_value=lambda entity, function, value: entity.coordinator.data.send_dynamic_change(function, value)
-    )
+        set_native_value=lambda entity, function, value: entity.coordinator.data.async_dhw_schedule_base_temp(value)
+    ),
 )
