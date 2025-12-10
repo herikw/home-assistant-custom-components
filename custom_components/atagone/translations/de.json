@@ -1,0 +1,299 @@
+{
+  "config": {
+    "error": {
+      "register_failed": "Registrierung fehlgeschlagen, bitte versuchen Sie es erneut"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        },
+        "description": "Geben Sie die Atag One Verbindungsdetails ein",
+        "title": "Atag One Details"
+      }
+    },
+    "abort": {
+      "discover_timeout": "Atag One Thermostat konnte nicht gefunden werden",
+      "no_bridges": "Kein Atag One Thermostat gefunden",
+      "all_configured": "Alle Atag One Thermostate sind bereits konfiguriert",
+      "unknown": "Unbekannter Fehler aufgetreten",
+      "cannot_connect": "Verbindung zum Atag One Thermostat nicht möglich",
+      "already_configured": "Atag One Thermostat ist bereits konfiguriert",
+      "reconnect_successful": "Atag One Thermostat erfolgreich wieder verbunden"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Scanintervall (Sekunden)"
+        },
+        "title": "Atag One konfigurieren"
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "atag_one": {
+        "name": "ATAG One Thermostat",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Voreinstellung",
+            "state": {
+              "manual": "Manuell",
+              "auto": "Automatisch",
+              "holiday": "Urlaub",
+              "extend": "Verlängern",
+              "fireplace": "Kamin"
+            }
+          },
+          "temperature_override": {
+            "name": "Temperatuuroverschreibung"
+          },
+           "outdoor_temperature": {
+            "name": "Außentemperatur"
+          }
+        }
+      }
+    },
+    "select": {
+      "ch_heating_type": {
+        "name": "Heizungsart",
+        "state": {
+          "air_heating": "Luftheizung",
+          "convector": "Konvektor",
+          "radiator": "Heizkörper",
+          "radiator_underfloor": "Heizkörper + Fußbodenheizung",
+          "underfloor": "Fußbodenheizung",
+          "underfloor_radiator": "Fußbodenheizung + Heizkörper"
+        }
+      },
+      "ch_isolation": {
+        "name": "Isolationsniveau",
+        "state": {
+          "poor": "Schlecht",
+          "average": "Durchschnittlich",
+          "good": "Gut"
+        }
+      },
+      "ch_building_size": {
+        "name": "Gebäudegröße",
+        "state": {
+          "small": "Klein",
+          "medium": "Mittel",
+          "large": "Groß"
+        }
+      },
+      "wdr_temps_influence": {
+        "name": "Temperatureinfluss",
+        "state": {
+          "off": "Aus",
+          "less": "Weniger",
+          "average": "Durchschnittlich",
+          "more": "Mehr",
+          "room_regulation": "Raumregelung"
+        }
+      },
+      "frost_prot_enabled": {
+        "name": "Frostschutz",
+        "state": {
+          "off": "Aus",
+          "outside": "Außen",
+          "inside": "Innen",
+          "inside_outside": "Innen + Außen"
+        }
+      }
+    },
+    "switch": {
+      "summer_eco_mode": {
+        "name": "Sommer-ECO-Modus"
+      }
+    },
+    "number": {
+      "ch_mode_temp": {
+        "name": "Zieltemperatur"
+      },
+      "outs_temp_offs": {
+        "name": "Außentemperatur-Korrektur"
+      },
+      "room_temp_offs": {
+        "name": "Raumtemperatur-Offset"
+      },
+      "summer_eco_temp": {
+        "name": "Sommer-ECO-Temperatur"
+      },
+      "ch_vacation_temp": {
+        "name": "Urlaubstemperatur"
+      },
+      "dhw_temp_setp": {
+        "name": "WW-Solltemperatur"
+      }
+    },
+    "sensor": {
+      "boiler_status": {
+        "name": "Kesselstatus",
+        "state": {
+          "Idle": "Leerlauf",
+          "Boiler": "Kessel",
+          "Central": "Heizung",
+          "Water": "Wasser"
+        }
+      },
+      "burning_hours": {
+        "name": "Brennstunden"
+      },
+      "room_temp": {
+        "name": "Raumtemperatur"
+      },
+      "outside_temp": {
+        "name": "Außentemperatur"
+      },
+      "pcb_temp": {
+        "name": "Platinentemperatur"
+      },
+      "dhw_water_temp": {
+        "name": "WW-Wassertemperatur"
+      },
+      "ch_water_temp": {
+        "name": "Heizungswassertemperatur"
+      },
+      "dhw_water_pres": {
+        "name": "WW-Wasserdruck"
+      },
+      "ch_water_pres": {
+        "name": "Heizungswasserdruck"
+      },
+      "ch_return_temp": {
+        "name": "Heizungsrücklauftemperatur"
+      },
+      "ch_time_to_temp": {
+        "name": "Zeit bis Solltemperatur"
+      },
+      "shown_set_temp": {
+        "name": "Eingestellte Temperatur"
+      },
+      "power_cons": {
+        "name": "Energieverbrauch"
+      },
+      "tout_avg": {
+        "name": "Durchschnittliche Außentemperatur"
+      },
+      "rssi": {
+        "name": "WLAN-Signalstärke"
+      },
+      "current": {
+        "name": "Strom"
+      },
+      "voltage": {
+        "name": "Spannung"
+      },
+      "charge_status": {
+        "name": "Ladestatus",
+        "state": {
+          "Idle": "Inaktiv",
+          "Charging": "Laden"
+        }
+      },
+      "lmuc_burner_starts": {
+        "name": "LMUC Brennerstarts"
+      },
+      "dhw_flow_rate": {
+        "name": "WW-Durchflussrate"
+      },
+      "resets": {
+        "name": "Resets"
+      },
+      "memory_allocation": {
+        "name": "Speicherzuweisung"
+      },
+      "dhw_mode_temp": {
+        "name": "WW-Modustemperatur"
+      },
+      "dhw_status": {
+        "name": "WW-Status"
+      },
+      "ch_mode_duration": {
+        "name": "Heizmodusdauer"
+      },
+      "boiler_config": {
+        "name": "Kesselkonfiguration"
+      },
+      "fireplace_duration": {
+        "name": "Kaminbetriebsdauer"
+      },
+      "extend_duration": {
+        "name": "Verlängerungsdauer"
+      },
+      "vacation_duration": {
+        "name": "Urlaubsdauer"
+      },
+      "regulation_state": {
+        "name": "Regelungsstatus"
+      },
+      "overshoot": {
+        "name": "Überschwingen"
+      },
+      "boiler_capacity": {
+        "name": "Kesselleistung"
+      },
+      "weather": {
+        "name": "Wetter",
+        "state": {
+          "Sunny": "Sonnig",
+          "Clear": "Klar",
+          "Rainy": "Regnerisch",
+          "Snowy": "Verschneit",
+          "Hail": "Hagel",
+          "Windy": "Windig",
+          "Fog": "Nebel",
+          "Cloudy": "Bewölkt",
+          "Partly Sunny": "Teilweise sonnig",
+          "Pouring": "Starkregen",
+          "Ligthning": "Blitz",
+          "Hurricane": "Orkan",
+          "Partly Cloudy": "Teilweise bewölkt"
+        }
+      },
+      "rel_mod_level": {
+        "name": "Brenner"
+      },
+      "boiler_errors": {
+        "name": "Kesselfehler"
+      },
+      "dbg_outside_temp": {
+        "name": "DBG Außentemperatur"
+      },
+      "ch_setpoint": {
+        "name": "Heißwasser-Sollwert"
+      },
+      "weather_temp": {
+        "name": "Wettertemperatur"
+      },
+      "max_boiler_temp": {
+        "name": "Maximale Kesseltemperatur"
+      },
+      "target_temp": {
+        "name": "Zieltemperatur"
+      },
+      "boiler_return_temp": {
+        "name": "Kesselrücklauftemperatur"
+      },
+      "ch_mode_temp": {
+        "name": "Heizmodus-Temperatur"
+      },
+      "dhw_temp_setp": {
+        "name": "WW-Solltemperatur"
+      },
+      "outs_temp_offs": {
+        "name": "Außentemperatur-Korrektur"
+      },
+      "room_temp_offs": {
+        "name": "Raumtemperatur-Offset"
+      },
+      "summer_eco_temp": {
+        "name": "Sommer-ECO-Temperatur"
+      }
+    }
+  }
+}

@@ -1,0 +1,299 @@
+{
+  "config": {
+    "error": {
+      "register_failed": "Échec de l'enregistrement, veuillez réessayer"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "host": "Hôte",
+          "port": "Port"
+        },
+        "description": "Entrez les détails de connexion Atag One",
+        "title": "Détails Atag One"
+      }
+    },
+    "abort": {
+      "discover_timeout": "Impossible de détecter le thermostat Atag One",
+      "no_bridges": "Aucun thermostat Atag One détecté",
+      "all_configured": "Tous les thermostats Atag One sont déjà configurés",
+      "unknown": "Erreur inconnue survenue",
+      "cannot_connect": "Impossible de se connecter au thermostat Atag One",
+      "already_configured": "Le thermostat Atag One est déjà configuré",
+      "reconnect_successful": "Reconnexion du thermostat Atag One réussie"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Intervalle de balayage (secondes)"
+        },
+        "title": "Configurer Atag One"
+      }
+    }
+  },
+  "entity": {
+    "climate": {
+      "atag_one": {
+        "name": "Thermostat ATAG One",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Mode de fonctionnement",
+            "state": {
+              "manual": "Mode manuel",
+              "auto": "Mode automatique",
+              "holiday": "Mode vacances",
+              "extend": "Prolonger le programme",
+              "fireplace": "Mode cheminée"
+            }
+          },
+          "temperature_override": {
+            "name": "Modification manuelle de la température"
+          },
+          "outdoor_temperature": {
+            "name": "Température extérieure"
+          }
+        }
+      }
+    },
+    "select": {
+      "ch_heating_type": {
+        "name": "Type de chauffage",
+        "state": {
+          "air_heating": "Chauffage à air",
+          "convector": "Convecteur",
+          "radiator": "Radiateur",
+          "radiator_underfloor": "Radiateur + Plancher chauffant",
+          "underfloor": "Plancher chauffant",
+          "underfloor_radiator": "Plancher chauffant + Radiateur"
+        }
+      },
+      "ch_isolation": {
+        "name": "Niveau d'isolation",
+        "state": {
+          "poor": "Faible",
+          "average": "Moyen",
+          "good": "Bon"
+        }
+      },
+      "ch_building_size": {
+        "name": "Taille du bâtiment",
+        "state": {
+          "small": "Petit",
+          "medium": "Moyen",
+          "large": "Grand"
+        }
+      },
+      "wdr_temps_influence": {
+        "name": "Influence de la température",
+        "state": {
+          "off": "Désactivé",
+          "less": "Moins",
+          "average": "Moyen",
+          "more": "Plus",
+          "room_regulation": "Régulation par pièce"
+        }
+      },
+      "frost_prot_enabled": {
+        "name": "Protection antigel",
+        "state": {
+          "off": "Désactivé",
+          "outside": "Extérieur",
+          "inside": "Intérieur",
+          "inside_outside": "Intérieur + Extérieur"
+        }
+      }
+    },
+    "switch": {
+      "summer_eco_mode": {
+        "name": "Mode ÉCO été"
+      }
+    },
+    "number": {
+      "ch_mode_temp": {
+        "name": "Température cible"
+      },
+      "outs_temp_offs": {
+        "name": "Correction température extérieure"
+      },
+      "room_temp_offs": {
+        "name": "Décalage température ambiante"
+      },
+      "summer_eco_temp": {
+        "name": "Température ÉCO été"
+      },
+      "ch_vacation_temp": {
+        "name": "Température vacances"
+      },
+      "dhw_temp_setp": {
+        "name": "Consigne ECS"
+      }
+    },
+    "sensor": {
+      "boiler_status": {
+        "name": "État de la chaudière",
+        "state": {
+          "Idle": "Inactif",
+          "Boiler": "Chaudière",
+          "Central": "Chauffage central",
+          "Water": "Eau"
+        }
+      },
+      "burning_hours": {
+        "name": "Heures de fonctionnement du brûleur"
+      },
+      "room_temp": {
+        "name": "Température ambiante"
+      },
+      "outside_temp": {
+        "name": "Température extérieure"
+      },
+      "pcb_temp": {
+        "name": "Température du circuit imprimé"
+      },
+      "dhw_water_temp": {
+        "name": "Température d'eau ECS"
+      },
+      "ch_water_temp": {
+        "name": "Température d'eau chauffage"
+      },
+      "dhw_water_pres": {
+        "name": "Pression d'eau ECS"
+      },
+      "ch_water_pres": {
+        "name": "Pression d'eau chauffage"
+      },
+      "ch_return_temp": {
+        "name": "Température de retour chauffage"
+      },
+      "ch_time_to_temp": {
+        "name": "Temps jusqu'à température cible"
+      },
+      "shown_set_temp": {
+        "name": "Température réglée"
+      },
+      "power_cons": {
+        "name": "Consommation d'énergie"
+      },
+      "tout_avg": {
+        "name": "Température extérieure moyenne"
+      },
+      "rssi": {
+        "name": "Force du signal Wi-Fi"
+      },
+      "current": {
+        "name": "Courant"
+      },
+      "voltage": {
+        "name": "Tension"
+      },
+      "charge_status": {
+        "name": "État de charge",
+        "state": {
+          "Idle": "Inactif",
+          "Charging": "En charge"
+        }
+      },
+      "lmuc_burner_starts": {
+        "name": "Démarrages du brûleur LMUC"
+      },
+      "dhw_flow_rate": {
+        "name": "Débit d'eau ECS"
+      },
+      "resets": {
+        "name": "Réinitialisations"
+      },
+      "memory_allocation": {
+        "name": "Allocation mémoire"
+      },
+      "dhw_mode_temp": {
+        "name": "Température mode ECS"
+      },
+      "dhw_status": {
+        "name": "État ECS"
+      },
+      "ch_mode_duration": {
+        "name": "Durée du mode chauffage"
+      },
+      "boiler_config": {
+        "name": "Configuration de la chaudière"
+      },
+      "fireplace_duration": {
+        "name": "Durée du mode cheminée"
+      },
+      "extend_duration": {
+        "name": "Durée prolongée"
+      },
+      "vacation_duration": {
+        "name": "Durée des vacances"
+      },
+      "regulation_state": {
+        "name": "État de régulation"
+      },
+      "overshoot": {
+        "name": "Dépassement"
+      },
+      "boiler_capacity": {
+        "name": "Capacité de la chaudière"
+      },
+      "weather": {
+        "name": "Météo",
+        "state": {
+          "Sunny": "Ensoleillé",
+          "Clear": "Clair",
+          "Rainy": "Pluvieux",
+          "Snowy": "Neigeux",
+          "Hail": "Grêle",
+          "Windy": "Venteux",
+          "Fog": "Brouillard",
+          "Cloudy": "Nuageux",
+          "Partly Sunny": "Partiellement ensoleillé",
+          "Pouring": "Fortes pluies",
+          "Ligthning": "Éclair",
+          "Hurricane": "Ouragan",
+          "Partly Cloudy": "Partiellement nuageux"
+        }
+      },
+      "rel_mod_level": {
+        "name": "Brûleur"
+      },
+      "boiler_errors": {
+        "name": "Erreurs de chaudière"
+      },
+      "dbg_outside_temp": {
+        "name": "DBG Température extérieure"
+      },
+      "ch_setpoint": {
+        "name": "Consigne eau chaude"
+      },
+      "weather_temp": {
+        "name": "Température météo"
+      },
+      "max_boiler_temp": {
+        "name": "Température max chaudière"
+      },
+      "target_temp": {
+        "name": "Température cible"
+      },
+      "boiler_return_temp": {
+        "name": "Température retour chaudière"
+      },
+      "ch_mode_temp": {
+        "name": "Température mode chauffage"
+      },
+      "dhw_temp_setp": {
+        "name": "Consigne ECS"
+      },
+      "outs_temp_offs": {
+        "name": "Correction température extérieure"
+      },
+      "room_temp_offs": {
+        "name": "Décalage température ambiante"
+      },
+      "summer_eco_temp": {
+        "name": "Température ÉCO été"
+      }
+    }
+  }
+}

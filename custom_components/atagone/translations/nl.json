@@ -34,6 +34,29 @@
     }
   },
   "entity": {
+    "climate": {
+      "atag_one": {
+        "name": "ATAG One Thermostaat",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Voorinstelling",
+            "state": {
+              "manual": "Handmatig",
+              "auto": "Automatisch",
+              "holiday": "Vakantie",
+              "extend": "Verlengen",
+              "fireplace": "Haard"
+            }
+          },
+          "temperature_override": {
+            "name": "Temperatuuroverschrijving"
+          },
+          "outdoor_temperature": {
+            "name": "Buitentemperatuur"
+          }
+        }
+      }
+    },
     "select": {
       "ch_heating_type": {
         "name": "Verwarmingstype",

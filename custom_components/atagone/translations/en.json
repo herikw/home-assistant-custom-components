@@ -34,6 +34,29 @@
     }
   },
   "entity": {
+    "climate": {
+      "atag_one": {
+        "name": "ATAG One Thermostat",
+        "state_attributes": {
+          "preset_mode": {
+            "name": "Preset",
+            "state": {
+              "manual": "Manual",
+              "auto": "Automatic",
+              "holiday": "Holiday",
+              "extend": "Extend",
+              "fireplace": "Fireplace"
+            }
+          },
+          "temperature_override": {
+            "name": "Temperature Override"
+          },
+          "outdoor_temperature": {
+            "name": "Outdoor Temperature"
+          }
+        }
+      }
+    },
     "select": {
       "ch_heating_type": {
         "name": "Heating type",

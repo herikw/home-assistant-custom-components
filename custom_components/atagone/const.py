@@ -374,6 +374,7 @@ ATAG_SENSOR_ENTITIES = (
         translation_key=f"{ReportItems.CH_WATER_TEMP}",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),
