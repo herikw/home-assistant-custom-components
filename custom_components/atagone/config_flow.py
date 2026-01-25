@@ -11,6 +11,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import OptionsFlowWithConfigEntry
 from homeassistant.const import (
     CONF_HOST, 
     CONF_PORT,
@@ -139,14 +140,8 @@ class AtagConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Get the options flow for this handler."""
         return AtagOneOptionsFlow(config_entry)
         
-class AtagOneOptionsFlow(config_entries.OptionsFlow):
-    """Handle Atag One options."""
-
-    def __init__(self, config_entry) -> None:
-        self.config_entry = config_entry
-
+class AtagOneOptionsFlow(OptionsFlowWithConfigEntry):
     async def async_step_init(self, user_input=None):
-        """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
@@ -156,12 +151,7 @@ class AtagOneOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_SCAN_INTERVAL,
-                        default=scan_interval
-                    ): int
-                }
+                {vol.Optional(CONF_SCAN_INTERVAL, default=scan_interval): int}
             ),
             last_step=True
         )
