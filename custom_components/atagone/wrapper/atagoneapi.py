@@ -33,7 +33,6 @@ MESSAGE_INFO_EXTRA = 64
 MESSAGE_INFO_REPORT_DETAILS = 64
 
 _LOGGER = logging.getLogger("atagoneapi")
-_LOGGER.setLevel(logging.DEBUG)
 
 class AtagStatusException(Exception):
     """ Status Exception for status other then 2 """
