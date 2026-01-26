@@ -254,7 +254,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             _LOGGER.error("set_hvac_mode: %s", status)
             return None
         
-        self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
             
@@ -278,7 +277,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             _LOGGER.error("set_preset_mode: %s", status)
             return None
             
-        self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
 
@@ -294,6 +292,5 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
                 _LOGGER.error("set_temperature: %s", status)
                 return None
             
-            self.async_write_ha_state()
             await asyncio.sleep(1)
             await self.coordinator.async_request_refresh()

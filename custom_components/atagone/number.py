@@ -50,7 +50,6 @@ class AtagOneNumber(AtagOneEntity, NumberEntity):
         """Set value for calibration."""
         
         await self.entity_description.set_native_value(self, self.entity_description.key, value)
-        self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
         

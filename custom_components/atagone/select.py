@@ -84,6 +84,5 @@ class AtagOneSelect(AtagOneEntity, SelectEntity):
             val = FROST_PROTECTION.get(option)
         
         status = await self.entity_description.select_option(self, funct, val)
-        self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()

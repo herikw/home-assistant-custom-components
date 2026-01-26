@@ -65,6 +65,7 @@ class AtagOneApi(AtagOneEntity):
 
         self._session: Optional[aiohttp.ClientSession] = None
         self._session_timeout = aiohttp.ClientTimeout(total=15)
+        self._request_lock = asyncio.Lock()
         atexit.register(self._close)
 
     async def async_discover(self):
@@ -196,38 +197,96 @@ class AtagOneApi(AtagOneEntity):
 
         return True
     
-    async def _async_send_request(self, request_path, json_payload, is_retry: bool = False ) -> Optional[Dict[str, Any]]:
-        """send async web request"""
-
+    async def _async_send_request(self, request_path: str, json_payload: str, max_attempts: int = 3) -> Optional[Dict[str, Any]]:
+        """Send async web request with exponential backoff retry logic."""
+        async with self._request_lock:
+            return await self._async_send_request_impl(request_path, json_payload, max_attempts)
+    
+    async def _async_send_request_impl(self, request_path: str, json_payload: str, max_attempts: int = 3) -> Optional[Dict[str, Any]]:
+        """Send async web request with exponential backoff retry logic."""
+        import random
+        
+        RETRYABLE_STATUS = {408, 425, 429, 500, 502, 503, 504}
+        NON_RETRYABLE_STATUS = {400, 401, 403, 404}
+        BASE_DELAY = 1
+        BACKOFF_FACTOR = 2
+        MAX_DELAY = 10
+        JITTER_MAX = 0.25
+        MAX_RETRY_AFTER = 30
+        
         session = await self._ensure_session()
         url = BASE_URL.format(self.host, self.port, request_path)
-
-        try:
-            async with session.post(url, data=json_payload.encode()) as response:
-                if response.status == HTTPStatus.NOT_FOUND:
-                    raise AtagConnectException("404: page not found")
-
-                if response.status >= HTTPStatus.BAD_REQUEST:
-                    if not is_retry:
-                        await asyncio.sleep(5)
-                        return await self._async_send_request(request_path, json_payload, True)
-                    raise AtagConnectException(f"Error {response.status} calling {url}")
-
-                if response.content_length and response.content_length > 0:
-                    payload = await response.json()
+        
+        for attempt in range(max_attempts):
+            try:
+                _LOGGER.debug(f"Sending request attempt {attempt + 1}/{max_attempts} to {url}")
+                
+                async with session.post(url, data=json_payload.encode()) as response:
+                    # Handle non-retryable status codes
+                    if response.status in NON_RETRYABLE_STATUS:
+                        if response.status == HTTPStatus.NOT_FOUND:
+                            raise AtagConnectException("404: page not found")
+                        raise AtagConnectException(f"Error {response.status} calling {url}")
+                    
+                    # Handle retryable status codes
+                    if response.status in RETRYABLE_STATUS:
+                        if attempt < max_attempts - 1:
+                            # Calculate backoff with jitter
+                            delay = min(BASE_DELAY * (BACKOFF_FACTOR ** attempt), MAX_DELAY)
+                            jitter = random.uniform(0, JITTER_MAX)
+                            total_delay = delay + jitter
+                            
+                            # Handle Retry-After header for 429
+                            if response.status == 429:
+                                retry_after = response.headers.get('Retry-After')
+                                if retry_after:
+                                    try:
+                                        total_delay = min(float(retry_after), MAX_RETRY_AFTER)
+                                    except (ValueError, TypeError):
+                                        pass
+                            
+                            _LOGGER.debug(f"Status {response.status}, retrying in {total_delay:.2f}s")
+                            await asyncio.sleep(total_delay)
+                            continue
+                        else:
+                            raise AtagConnectException(f"Error {response.status} calling {url}")
+                    
+                    # Handle other error statuses
+                    if response.status >= HTTPStatus.BAD_REQUEST:
+                        raise AtagConnectException(f"Error {response.status} calling {url}")
+                    
+                    # Success status, parse response
+                    if response.content_length and response.content_length > 0:
+                        payload = await response.json()
+                    else:
+                        payload = await response.json(content_type=None)
+                    
+                    # Validate response
+                    if self.__check_response(request_path, payload):
+                        return payload
+                        
+            except asyncio.CancelledError:
+                # Always re-raise CancelledError
+                raise
+            except asyncio.TimeoutError as exc:
+                if attempt < max_attempts - 1:
+                    delay = min(BASE_DELAY * (BACKOFF_FACTOR ** attempt), MAX_DELAY)
+                    jitter = random.uniform(0, JITTER_MAX)
+                    total_delay = delay + jitter
+                    _LOGGER.debug(f"Timeout on attempt {attempt + 1}/{max_attempts}, retrying in {total_delay:.2f}s")
+                    await asyncio.sleep(total_delay)
                 else:
-                    payload = await response.json(content_type=None)
-
-                if self.__check_response(request_path, payload):
-                    return payload
-        except asyncio.TimeoutError as exc:
-            raise AtagConnectException("Timeout while communicating with ATAG One") from exc
-        except aiohttp.ClientError as exc:
-            if not is_retry:
-                await asyncio.sleep(5)
-                return await self._async_send_request(request_path, json_payload, True)
-            raise AtagConnectException("Unable to communicate with ATAG One") from exc
-
+                    raise AtagConnectException("Timeout while communicating with ATAG One") from exc
+            except aiohttp.ClientError as exc:
+                if attempt < max_attempts - 1:
+                    delay = min(BASE_DELAY * (BACKOFF_FACTOR ** attempt), MAX_DELAY)
+                    jitter = random.uniform(0, JITTER_MAX)
+                    total_delay = delay + jitter
+                    _LOGGER.debug(f"Client error on attempt {attempt + 1}/{max_attempts}, retrying in {total_delay:.2f}s")
+                    await asyncio.sleep(total_delay)
+                else:
+                    raise AtagConnectException("Unable to communicate with ATAG One") from exc
+        
         return None
     
     def __check_response(self, request_path, response: Dict[str, Any]) -> bool:

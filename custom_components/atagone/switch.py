@@ -48,16 +48,12 @@ class AtagOneSwitch(AtagOneEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn the entity on."""
-        self._attr_is_on = True
         status = await self.entity_description.set_native_value(self, self.entity_description.key, 1)
-        self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
         """Turn the entity off."""
-        self._attr_is_on = False
         status = await self.entity_description.set_native_value(self, self.entity_description.key, 0)
-        self.async_write_ha_state()
         await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
