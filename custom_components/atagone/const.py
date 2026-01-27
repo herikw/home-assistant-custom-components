@@ -212,6 +212,7 @@ class ReportItems:
     DHW_FLOW_RATE: str = "dhw_flow_rate"
     RESETS: str = "resets"
     MEMPORY_ALLOCATION: str = "memory_allocation"
+    GAS_TOTAL: str = "gas_total"
     
     class Details:
         BOILER_TEMP: str = "boiler_temp"
@@ -460,7 +461,8 @@ ATAG_SENSOR_ENTITIES = (
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.POWER_CONS}",
         translation_key=f"{ReportItems.POWER_CONS}",
-        device_class=SensorDeviceClass.GAS,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
+        entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="m³/h",
         entity_registry_enabled_default=True,
@@ -647,6 +649,13 @@ ATAG_SENSOR_ENTITIES = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=True,  
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
+    ),
+    AtagOneSensorEntityDescription(
+        key=f"{ReportItems.GAS_TOTAL}",
+        translation_key=f"{ReportItems.GAS_TOTAL}",
+        device_class=SensorDeviceClass.GAS,
+        native_unit_of_measurement="m³",
+        state_class=SensorStateClass.TOTAL_INCREASING
     )
 )
 

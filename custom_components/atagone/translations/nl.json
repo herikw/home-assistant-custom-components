@@ -194,6 +194,9 @@
       "power_cons": {
         "name": "Gasverbruik"
       },
+      "gas_flow": {
+        "name": "Gas Totaal"
+      },
       "tout_avg": {
         "name": "Gemiddelde Buiten Temp"
       },

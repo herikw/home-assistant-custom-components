@@ -176,6 +176,9 @@
       "power_cons": {
         "name": "Power Consumption"
       },
+      "gas_flow": {
+        "name": "Gas Usage"
+      },
       "tout_avg": {
         "name": "Average Outside Temp"
       },
