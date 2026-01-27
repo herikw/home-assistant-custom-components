@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.13] - 2026-01-27
+
+### Fixed
+- **Optimistic updates for Number entities** – Number sliders now reflect the new value immediately when changed in the UI.
+  - `number.py`: added an optimistic cache (`_optimistic_native_value`) and call to `async_write_ha_state()` in `async_set_native_value()` so the slider updates instantly.
+  - Clear the optimistic cache on coordinator updates (`_handle_coordinator_update()`), and reconcile with device state after the coordinator refresh.
+
+- **Gas consumption reporting for Energy dashboard**
+  - Fixed incorrect use of `device_class: gas` with a flow-rate unit (`m³/h`).
+  - Gas flow is now correctly modeled as a **volume flow rate** sensor (`m³/h`).
+  - Added a new cumulative **gas usage** sensor (`m³`, `state_class: total_increasing`) derived from the gas flow.
+  - The cumulative gas sensor is compatible with Home Assistant **Energy dashboard** and long-term statistics.
+  - Gas usage is persisted across restarts using `RestoreEntity`, preventing resets or spikes after reboot.
+
+- **Coordinator update handling**
+  - Fixed invalid `async def _handle_coordinator_update()` implementations.
+  - `_handle_coordinator_update()` is now synchronous everywhere, as required by `CoordinatorEntity`.
+  - Prevents dropped coordinator callbacks, runtime warnings, and entities failing to update.
+
+### Migration notes (3.0.13)
+
+This release fixes gas consumption reporting and improves coordinator handling.
+
+If you previously used the `gasverbruik / gasusage` sensor in the Energy dashboard:
+- That sensor represented **gas flow** (`m³/h`) and was never compatible with Energy.
+- Energy dashboard now requires the new **`Atag One Gas Used`** sensor (`m³`).
+
+#### What you may need to do
+- Open **Settings → Dashboards → Energy**
+- Remove the old gas sensor (if configured)
+- Select **Atag One Gas Used** as your gas source
+
+No other manual steps are required.  
+Existing energy statistics will automatically rebuild over time.
+
+
 ## [3.0.12] - 2026-01-26
 
 ### Changed
