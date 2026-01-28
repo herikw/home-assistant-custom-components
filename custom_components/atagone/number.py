@@ -89,13 +89,29 @@ class AtagOneNumber(AtagOneEntity, NumberEntity):
             )
             raise
 
-        await self.coordinator.async_request_refresh()
-
     def _handle_coordinator_update(self) -> None:
-        """Handle coordinator update - clear optimistic value on refresh.
+        """Handle coordinator update - clear optimistic value only when device confirms change.
         
-        Always clear optimistic value to ensure UI shows actual device state.
-        This prevents stale optimistic values from lingering.
+        Keep optimistic value visible until the actual device value changes,
+        then reconcile with the real state.
         """
-        self._optimistic_native_value = None
+        if self._optimistic_native_value is not None:
+            # Get the actual device value
+            device_value = self.entity_description.get_native_value(self, self.entity_description.key)
+            # Only clear optimistic if device value actually matches (within tolerance) or differs significantly
+            if device_value is not None:
+                # If device has the value we sent (within 0.1 tolerance), clear optimistic
+                if abs(device_value - self._optimistic_native_value) < 0.1:
+                    self._optimistic_native_value = None
+                # If device rejected/clamped the value, also clear and show real value
+                elif abs(device_value - self._optimistic_native_value) > 0.5:
+                    _LOGGER.info(
+                        "Device changed %s from optimistic %s to %s",
+                        self.entity_description.key,
+                        self._optimistic_native_value,
+                        device_value,
+                    )
+                    self._optimistic_native_value = None
+        
+        super()._handle_coordinator_update()
         super()._handle_coordinator_update()

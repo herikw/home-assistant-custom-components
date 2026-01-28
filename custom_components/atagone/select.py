@@ -100,14 +100,28 @@ class AtagOneSelect(AtagOneEntity, SelectEntity):
             self.async_write_ha_state()
             _LOGGER.error("Failed to select %s for %s: %s", option, funct, err)
             raise
-        
-        await self.coordinator.async_request_refresh()
     
     def _handle_coordinator_update(self) -> None:
-        """Handle coordinator update - clear optimistic value on refresh.
+        """Handle coordinator update - clear optimistic value only when device confirms change.
         
-        Always clear optimistic value to ensure UI shows actual device state.
-        This prevents stale optimistic values from lingering.
+        Keep optimistic value visible until the actual device value changes,
+        then reconcile with the real state.
         """
-        self._optimistic_option = None
+        if self._optimistic_option is not None:
+            # Get the actual device option
+            device_option = self.current_option
+            # Only clear optimistic if device option matches our intended option
+            if device_option == self._optimistic_option:
+                self._optimistic_option = None
+            elif device_option is not None:
+                # Device rejected/changed to different value
+                _LOGGER.info(
+                    "Device changed %s from optimistic %s to %s",
+                    self.entity_description.key,
+                    self._optimistic_option,
+                    device_option,
+                )
+                self._optimistic_option = None
+        
+        super()._handle_coordinator_update()
         super()._handle_coordinator_update()

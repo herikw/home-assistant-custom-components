@@ -61,8 +61,6 @@ class AtagOneSwitch(AtagOneEntity, SwitchEntity):
             self.async_write_ha_state()
             _LOGGER.error("Failed to turn on %s: %s", self.entity_description.key, err)
             raise
-        
-        await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
         """Turn the entity off with optimistic update."""
@@ -79,14 +77,27 @@ class AtagOneSwitch(AtagOneEntity, SwitchEntity):
             self.async_write_ha_state()
             _LOGGER.error("Failed to turn off %s: %s", self.entity_description.key, err)
             raise
-        
-        await self.coordinator.async_request_refresh()
 
     def _handle_coordinator_update(self) -> None:
-        """Handle coordinator update - clear optimistic value on refresh.
+        """Handle coordinator update - clear optimistic value only when device confirms change.
         
-        Always clear optimistic value to ensure UI shows actual device state.
-        This prevents stale optimistic values from lingering.
+        Keep optimistic value visible until the actual device value changes,
+        then reconcile with the real state.
         """
-        self._optimistic_is_on = None
+        if self._optimistic_is_on is not None:
+            # Get the actual device state
+            device_is_on = self.entity_description.get_native_value(self, self.entity_description.key) == 1
+            # Only clear optimistic if device state matches our intended state
+            if device_is_on == self._optimistic_is_on:
+                self._optimistic_is_on = None
+            else:
+                # Device rejected/changed to different state
+                _LOGGER.info(
+                    "Device changed %s from optimistic %s to %s",
+                    self.entity_description.key,
+                    self._optimistic_is_on,
+                    device_is_on,
+                )
+                self._optimistic_is_on = None
+        
         super()._handle_coordinator_update()

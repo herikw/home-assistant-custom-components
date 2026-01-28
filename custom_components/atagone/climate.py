@@ -279,8 +279,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             self.async_write_ha_state()
             _LOGGER.error("Failed to set hvac_mode to %s: %s", hvac_mode, err)
             raise
-        
-        await self.coordinator.async_request_refresh()
             
     async def async_set_preset_mode(self, preset_mode: PresetMode) -> None:
         """Set new preset mode with optimistic update."""
@@ -310,8 +308,6 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             self.async_write_ha_state()
             _LOGGER.error("Failed to set preset_mode to %s: %s", preset_mode, err)
             raise
-            
-        await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set new target temperature with optimistic update."""
@@ -333,16 +329,47 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
             self.async_write_ha_state()
             _LOGGER.error("Failed to set temperature to %s: %s", target_temp, err)
             raise
-        
-        await self.coordinator.async_request_refresh()
 
     def _handle_coordinator_update(self) -> None:
-        """Handle coordinator update - clear optimistic values on refresh.
+        """Handle coordinator update - clear optimistic values only when device confirms changes.
         
-        Always clear optimistic values to ensure UI shows actual device state.
-        This prevents stale optimistic values from lingering.
+        Keep optimistic values visible until actual device values change,
+        then reconcile with the real state.
         """
-        self._optimistic_hvac_mode = None
-        self._optimistic_preset_mode = None
-        self._optimistic_target_temp = None
+        if self._optimistic_hvac_mode is not None:
+            device_hvac = self.hvac_mode
+            if device_hvac == self._optimistic_hvac_mode:
+                self._optimistic_hvac_mode = None
+            else:
+                _LOGGER.info(
+                    "Device changed hvac_mode from optimistic %s to %s",
+                    self._optimistic_hvac_mode,
+                    device_hvac,
+                )
+                self._optimistic_hvac_mode = None
+        
+        if self._optimistic_preset_mode is not None:
+            device_preset = self.preset_mode
+            if device_preset == self._optimistic_preset_mode:
+                self._optimistic_preset_mode = None
+            else:
+                _LOGGER.info(
+                    "Device changed preset_mode from optimistic %s to %s",
+                    self._optimistic_preset_mode,
+                    device_preset,
+                )
+                self._optimistic_preset_mode = None
+        
+        if self._optimistic_target_temp is not None:
+            device_temp = self.coordinator.data.current_setpoint
+            if device_temp is not None and abs(device_temp - self._optimistic_target_temp) < 0.1:
+                self._optimistic_target_temp = None
+            elif device_temp is not None:
+                _LOGGER.info(
+                    "Device changed target_temperature from optimistic %s to %s",
+                    self._optimistic_target_temp,
+                    device_temp,
+                )
+                self._optimistic_target_temp = None
+        
         super()._handle_coordinator_update()
