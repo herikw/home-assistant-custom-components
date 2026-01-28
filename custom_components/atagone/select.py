@@ -8,7 +8,6 @@ https://github.com/herikw/home-assistant-custom-components
 # type: ignore
 
 import logging
-import asyncio
 from .const import (
     DOMAIN,
     ISOLATION_LEVELS,
@@ -25,8 +24,6 @@ from .const import (
 
 from homeassistant.components.select import SelectEntity
 from .const import ATAG_SELECT_ENTITIES, AtagOneSelectEntityDescription
-
-import logging
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,11 +47,15 @@ class AtagOneSelect(AtagOneEntity, SelectEntity):
 
         self.coordinator = coordinator
         self.entity_description = description
-        self._attr_mode = "dropdown"        
+        self._attr_mode = "dropdown"
+        self._optimistic_option: str | None = None        
     
     @property
     def current_option(self):
         """Return current selected option."""
+        # If we've optimistically set a value, show it immediately in the UI
+        if self._optimistic_option is not None:
+            return self._optimistic_option
         
         atagval = self.entity_description.get_current_option(self, self.entity_description.key)
         
@@ -70,7 +71,11 @@ class AtagOneSelect(AtagOneEntity, SelectEntity):
             return FROST_PROTECTION_REV.get(atagval)
                 
     async def async_select_option(self, option: str):
+        """Select an option with optimistic update.
         
+        Shows the new option immediately in the UI (optimistic update),
+        sends it to the device, and reconciles with actual state on next refresh.
+        """
         funct = self.entity_description.key
         if funct == "wdr_temps_influence":
             val = TEMP_INFLUENCE.get(option)
@@ -83,6 +88,26 @@ class AtagOneSelect(AtagOneEntity, SelectEntity):
         elif funct == "frost_prot_enabled":
             val = FROST_PROTECTION.get(option)
         
-        status = await self.entity_description.select_option(self, funct, val)
-        await asyncio.sleep(1)
+        # Optimistically update the UI
+        self._optimistic_option = option
+        self.async_write_ha_state()
+        _LOGGER.debug("Optimistic update for %s: %s", funct, option)
+        
+        try:
+            await self.entity_description.select_option(self, funct, val)
+        except Exception as err:
+            self._optimistic_option = None
+            self.async_write_ha_state()
+            _LOGGER.error("Failed to select %s for %s: %s", option, funct, err)
+            raise
+        
         await self.coordinator.async_request_refresh()
+    
+    def _handle_coordinator_update(self) -> None:
+        """Handle coordinator update - clear optimistic value on refresh.
+        
+        Always clear optimistic value to ensure UI shows actual device state.
+        This prevents stale optimistic values from lingering.
+        """
+        self._optimistic_option = None
+        super()._handle_coordinator_update()

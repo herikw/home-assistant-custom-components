@@ -9,7 +9,6 @@ https://github.com/herikw/home-assistant-custom-components
 import logging
 from typing import Any
 import voluptuous as vol
-import asyncio
 
 from .util import atag_date, atag_time
 from .entity import AtagOneEntity
@@ -106,7 +105,7 @@ async def async_setup_entry(
         for thermostat in entities:
             if thermostat.entity_id == entity_id:
                 await thermostat.create_vacation(service.data)
-                thermostat.schedule_update_ha_state(True)
+                thermostat.async_write_ha_state()
                 break
 
     @callback
@@ -117,7 +116,7 @@ async def async_setup_entry(
         for thermostat in entities:
             if thermostat.entity_id == entity_id:
                 await thermostat.cancel_vacation()
-                thermostat.schedule_update_ha_state(True)
+                thermostat.async_write_ha_state()
                 break
 
     hass.services.async_register(
@@ -160,6 +159,11 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         self._max_temp = DEFAULT_MAX_TEMP
         self._target_temperature_step = 0.5
         
+        # Optimistic updates
+        self._optimistic_hvac_mode: str | None = None
+        self._optimistic_preset_mode: str | None = None
+        self._optimistic_target_temp: float | None = None
+        
     async def create_vacation(self, service_data) -> None:
         """Create a vacation with user-specified parameters."""
 
@@ -188,6 +192,10 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
     @property
     def target_temperature(self) -> float:
         """Return the temperature we try to reach."""
+        # If we've optimistically set a value, show it immediately in the UI
+        if self._optimistic_target_temp is not None:
+            return self._optimistic_target_temp
+        
         return self.coordinator.data.current_setpoint
     
     @property
@@ -234,11 +242,19 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
 
     @property
     def hvac_mode(self) -> HVACMode:
+        # If we've optimistically set a value, show it immediately in the UI
+        if self._optimistic_hvac_mode is not None:
+            return self._optimistic_hvac_mode
+        
         atag_hvac = self.coordinator.data.mode
         return ATAG_HVAC_MODE_TO_HA.get(atag_hvac)
     
     @property
     def preset_mode(self) -> str:
+        # If we've optimistically set a value, show it immediately in the UI
+        if self._optimistic_preset_mode is not None:
+            return self._optimistic_preset_mode
+        
         preset_mode = self.coordinator.data.preset
         return ATAG_PRESETS_TO_HA.get(preset_mode)
 
@@ -247,50 +263,86 @@ class AtagOneThermostat(AtagOneEntity, ClimateEntity):
         return [*HA_PRESETS_TO_ATAG]
 
     async def async_set_hvac_mode(self, hvac_mode: str) -> None:
-        """Set new target hvac mode."""
-        atag_hvac = HA_HVAC_MODE_TO_ATAG.get(hvac_mode, HVACMode.AUTO)
-        status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_CONTROL_MODE, atag_hvac)
-        if not status:
-            _LOGGER.error("set_hvac_mode: %s", status)
-            return None
+        """Set new target hvac mode with optimistic update."""
+        # Optimistically update the UI
+        self._optimistic_hvac_mode = hvac_mode
+        self.async_write_ha_state()
+        _LOGGER.debug("Optimistic update for hvac_mode: %s", hvac_mode)
         
-        await asyncio.sleep(1)
+        atag_hvac = HA_HVAC_MODE_TO_ATAG.get(hvac_mode, HVACMode.AUTO)
+        try:
+            status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_CONTROL_MODE, atag_hvac)
+            if not status:
+                raise ValueError(f"Device rejected hvac_mode change: {status}")
+        except Exception as err:
+            self._optimistic_hvac_mode = None
+            self.async_write_ha_state()
+            _LOGGER.error("Failed to set hvac_mode to %s: %s", hvac_mode, err)
+            raise
+        
         await self.coordinator.async_request_refresh()
             
     async def async_set_preset_mode(self, preset_mode: PresetMode) -> None:
-        """Set new preset mode."""
+        """Set new preset mode with optimistic update."""
+        # Optimistically update the UI
+        self._optimistic_preset_mode = preset_mode
+        self.async_write_ha_state()
+        _LOGGER.debug("Optimistic update for preset_mode: %s", preset_mode)
         
-        vacation_duration = self.coordinator.data.vacation_duration
-        if preset_mode == PresetMode.HOLIDAY:
-            if vacation_duration > 0:
-                await self.coordinator.data.async_cancel_vacation()
-                preset_mode = PresetMode.AUTO
+        try:
+            vacation_duration = self.coordinator.data.vacation_duration
+            if preset_mode == PresetMode.HOLIDAY:
+                if vacation_duration > 0:
+                    await self.coordinator.data.async_cancel_vacation()
+                    preset_mode = PresetMode.AUTO
+                else:
+                    await self.coordinator.data.async_create_vacation()
             else:
-                await self.coordinator.data.async_create_vacation()
-        else:
-            if vacation_duration > 0:
-                await self.coordinator.data.async_cancel_vacation()
-                
-        atag_preset = HA_PRESETS_TO_ATAG.get(preset_mode, PresetMode.AUTO )
-        status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE, atag_preset)
-        if not status:
-            _LOGGER.error("set_preset_mode: %s", status)
-            return None
+                if vacation_duration > 0:
+                    await self.coordinator.data.async_cancel_vacation()
+                    
+            atag_preset = HA_PRESETS_TO_ATAG.get(preset_mode, PresetMode.AUTO)
+            status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE, atag_preset)
+            if not status:
+                raise ValueError(f"Device rejected preset_mode change: {status}")
+        except Exception as err:
+            self._optimistic_preset_mode = None
+            self.async_write_ha_state()
+            _LOGGER.error("Failed to set preset_mode to %s: %s", preset_mode, err)
+            raise
             
-        await asyncio.sleep(1)
         await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
-        """Set new target temperature."""
-
+        """Set new target temperature with optimistic update."""
         target_temp = kwargs.get(ATTR_TEMPERATURE)
         if target_temp is None:
             return None
-        else:
+        
+        # Optimistically update the UI
+        self._optimistic_target_temp = target_temp
+        self.async_write_ha_state()
+        _LOGGER.debug("Optimistic update for target_temperature: %s", target_temp)
+        
+        try:
             status = await self.coordinator.data.send_dynamic_change(ControlProperty.CH_MODE_TEMP, target_temp)
             if not status:
-                _LOGGER.error("set_temperature: %s", status)
-                return None
-            
-            await asyncio.sleep(1)
-            await self.coordinator.async_request_refresh()
+                raise ValueError(f"Device rejected temperature change: {status}")
+        except Exception as err:
+            self._optimistic_target_temp = None
+            self.async_write_ha_state()
+            _LOGGER.error("Failed to set temperature to %s: %s", target_temp, err)
+            raise
+        
+        await self.coordinator.async_request_refresh()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle coordinator update - clear optimistic values on refresh.
+        
+        Always clear optimistic values to ensure UI shows actual device state.
+        This prevents stale optimistic values from lingering.
+        """
+        self._optimistic_hvac_mode = None
+        self._optimistic_preset_mode = None
+        self._optimistic_target_temp = None
+        super()._handle_coordinator_update()

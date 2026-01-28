@@ -6,14 +6,9 @@ https://github.com/herikw/home-assistant-custom-components
 
 """
 import logging
-import asyncio
 
 from homeassistant.components.switch import SwitchEntity
-from .const import DEFAULT_NAME, DOMAIN
-import logging
-from abc import ABC
-
-from .const import ATAG_SWITCH_ENTITIES, AtagOneSwitchEntityDescription
+from .const import DEFAULT_NAME, DOMAIN, ATAG_SWITCH_ENTITIES, AtagOneSwitchEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,22 +33,60 @@ class AtagOneSwitch(AtagOneEntity, SwitchEntity):
 
         self.coordinator = coordinator
         self.entity_description = description
+        self._optimistic_is_on: bool | None = None
 
     @property
     def is_on(self) -> bool | None:
         """Return True if entity is on."""
+        # If we've optimistically set a value, show it immediately in the UI
+        if self._optimistic_is_on is not None:
+            return self._optimistic_is_on
+        
         if self.entity_description.get_native_value(self, self.entity_description.key) == 1:
             return True
         return False
 
     async def async_turn_on(self, **kwargs):
-        """Turn the entity on."""
-        status = await self.entity_description.set_native_value(self, self.entity_description.key, 1)
-        await asyncio.sleep(1)
+        """Turn the entity on with optimistic update."""
+        self._optimistic_is_on = True
+        self.async_write_ha_state()
+        _LOGGER.debug("Optimistic update for %s: on", self.entity_description.key)
+        
+        try:
+            await self.entity_description.set_native_value(
+                self, self.entity_description.key, 1
+            )
+        except Exception as err:
+            self._optimistic_is_on = None
+            self.async_write_ha_state()
+            _LOGGER.error("Failed to turn on %s: %s", self.entity_description.key, err)
+            raise
+        
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs):
-        """Turn the entity off."""
-        status = await self.entity_description.set_native_value(self, self.entity_description.key, 0)
-        await asyncio.sleep(1)
+        """Turn the entity off with optimistic update."""
+        self._optimistic_is_on = False
+        self.async_write_ha_state()
+        _LOGGER.debug("Optimistic update for %s: off", self.entity_description.key)
+        
+        try:
+            await self.entity_description.set_native_value(
+                self, self.entity_description.key, 0
+            )
+        except Exception as err:
+            self._optimistic_is_on = None
+            self.async_write_ha_state()
+            _LOGGER.error("Failed to turn off %s: %s", self.entity_description.key, err)
+            raise
+        
         await self.coordinator.async_request_refresh()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle coordinator update - clear optimistic value on refresh.
+        
+        Always clear optimistic value to ensure UI shows actual device state.
+        This prevents stale optimistic values from lingering.
+        """
+        self._optimistic_is_on = None
+        super()._handle_coordinator_update()
