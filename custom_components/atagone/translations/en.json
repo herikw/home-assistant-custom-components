@@ -24,9 +24,15 @@
     }
   },
   "options": {
+    "error": {
+      "cannot_connect": "Unable to connect to the Atag One Thermostat",
+      "wrong_device": "The address belongs to a different Atag One thermostat"
+    },
     "step": {
       "init": {
         "data": {
+          "host": "Host",
+          "port": "Port",
           "scan_interval": "Scan Interval (seconds)"
         },
         "title": "Configure Atag One"
@@ -131,7 +137,7 @@
       }
     },
     "sensor": {
-      "boiler_status": {
+      "atag_one_boiler_status": {
         "name": "Boiler Status",
         "state": {
           "Idle": "Idle",
@@ -300,5 +306,4 @@
     }
   }
 }
-
 

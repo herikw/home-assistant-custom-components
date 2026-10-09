@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.14] - 2026-07-17
+
+### Added
+- **Editable connection details in options flow**
+  - Added `host` and `port` fields to the ATAG One options flow so the thermostat IP address can be changed from the integration configuration screen.
+  - Added validation before saving updated connection details by connecting to the supplied address.
+  - Added a unique ID check to prevent accidentally changing an existing config entry to a different ATAG One thermostat.
+  - Added translated option labels and error messages for English, Dutch, French, and German.
+
+### Changed
+- Corrected the gas flow conversion factor from the raw API value (`/10000` → `/1000`).
+- Improved gas accumulation accuracy by integrating gas flow using the actual elapsed polling interval.
+- Filter invalid and negative gas flow values from the accumulated gas calculation.
+- Reused the connection schema between the initial config flow and the options flow to keep host/port handling consistent.
+- Updated config entry data when connection details change while keeping `scan_interval` stored as an option.
+
 ## [3.0.13] - 2026-01-27
 
 ### Fixed

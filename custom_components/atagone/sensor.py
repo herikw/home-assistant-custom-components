@@ -1,18 +1,18 @@
 """
-Adds Support for Atag One Thermostat
+Adds support for the Atag One Thermostat.
 
 Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 """
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import RestoreSensor, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.typing import StateType
 from homeassistant.util import dt as dt_util
 
@@ -34,66 +34,75 @@ async def async_setup_entry(
 ) -> None:
     """Initialize sensor platform from config entry."""
     coordinator = hass.data[DOMAIN][config_entry.entry_id]
-    async_add_entities([AtagOneSensor(coordinator, sensor) for sensor in ATAG_SENSOR_ENTITIES])
+
+    async_add_entities(
+        [
+            AtagOneSensor(coordinator, description)
+            for description in ATAG_SENSOR_ENTITIES
+        ]
+    )
 
 
-class AtagOneSensor(AtagOneEntity, RestoreEntity, SensorEntity):
-    """Representation of an AtagOne Sensor."""
+class AtagOneSensor(AtagOneEntity, RestoreSensor, SensorEntity):
+    """Representation of an Atag One sensor."""
 
     _attr_has_entity_name = True
+
     entity_description: AtagOneSensorEntityDescription
 
-    def __init__(self, coordinator, description: AtagOneSensorEntityDescription) -> None:
+    def __init__(
+        self,
+        coordinator,
+        description: AtagOneSensorEntityDescription,
+    ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, description)
+
         self.coordinator = coordinator
         self.entity_description = description
 
-        # Only used for gas_total
+        # Only used by gas_total.
         self._last_update: datetime | None = None
         self._attr_native_value: float | None = None
 
     async def async_added_to_hass(self) -> None:
-        """Restore previous state (gas_total only)."""
+        """Restore the previous gas total after restart or reload."""
         await super().async_added_to_hass()
 
         if self.entity_description.key != "gas_total":
             return
 
-        last_state = await self.async_get_last_state()
-        if last_state is None:
-            self._attr_native_value = 0.0
-            self._last_update = dt_util.utcnow()
-            return
+        last_sensor_data = await self.async_get_last_sensor_data()
 
-        try:
-            self._attr_native_value = max(float(last_state.state), 0.0)
-        except (ValueError, TypeError):
-            self._attr_native_value = 0.0
-
-        last_update_str = last_state.attributes.get("last_update")
-        if last_update_str:
+        if (
+            last_sensor_data is not None
+            and last_sensor_data.native_value is not None
+        ):
             try:
-                self._last_update = dt_util.parse_datetime(last_update_str)
-            except ValueError:
-                self._last_update = None
+                self._attr_native_value = max(
+                    float(last_sensor_data.native_value),
+                    0.0,
+                )
+            except (ValueError, TypeError):
+                self._attr_native_value = 0.0
+        else:
+            self._attr_native_value = 0.0
 
-        # IMPORTANT: reset timestamp to now to avoid a large dt jump after restart
+        # Always start timing from now. Never integrate the time during which
+        # Home Assistant or the integration was stopped.
         self._last_update = dt_util.utcnow()
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-                
         if self.entity_description.key != "gas_total":
             super()._handle_coordinator_update()
             return
 
-        flow = self.coordinator.data.sensors.get("power_cons")
-        if flow is None:
-            return
-
         now = dt_util.utcnow()
 
+        # Update the timestamp even when the current flow value is invalid.
+        # This prevents the next valid flow value from being applied across an
+        # unavailable period.
         if self._last_update is None:
             self._last_update = now
             return
@@ -104,59 +113,84 @@ class AtagOneSensor(AtagOneEntity, RestoreEntity, SensorEntity):
         if dt_seconds <= 0:
             return
 
-        if self._attr_native_value is None:
-            self._attr_native_value = 0.0
+        flow = self.coordinator.data.sensors.get("power_cons")
 
         try:
-            flow_val = max(float(flow), 0.0)  # m³/h
+            flow_val = max(float(flow), 0.0) 
         except (ValueError, TypeError):
             return
+
+        if self._attr_native_value is None:
+            self._attr_native_value = 0.0
 
         delta_m3 = flow_val * dt_seconds / 3600.0
         self._attr_native_value += delta_m3
 
+        _LOGGER.debug(
+            (
+                "Gas integration: flow=%.4f m³/h, elapsed=%.1f seconds, "
+                "delta=%.6f m³, total=%.4f m³"
+            ),
+            flow_val,
+            dt_seconds,
+            delta_m3,
+            self._attr_native_value,
+        )
+
         self.async_write_ha_state()
 
+    async def async_reset_gas_total(self) -> None:
+        """Reset the accumulated gas usage."""
+        if self.entity_description.key != "gas_total":
+            return
 
-    @property
-    def extra_state_attributes(self):
-        """Persist last_update (gas_total only)."""
-        if self.entity_description.key == "gas_total":
-            return {
-                "last_update": self._last_update.isoformat() if self._last_update else None
-            }
-        return None
+        self._attr_native_value = 0.0
+        self._last_update = dt_util.utcnow()
+
+        _LOGGER.info("Reset accumulated Atag One gas usage")
+
+        self.async_write_ha_state()
 
     @property
     def native_value(self) -> StateType:
-        """Return the state of the sensor."""
+        """Return the sensor state."""
         key = self.entity_description.key
 
-        # ----- DERIVED SENSOR (no get_native_value!) -----
         if key == "gas_total":
-            return (
-                None
-                if self._attr_native_value is None
-                else round(self._attr_native_value, 4)
-            )
+            if self._attr_native_value is None:
+                return None
 
-        # ----- NORMAL COORDINATOR-BACKED SENSORS -----
+            return round(self._attr_native_value, 4)
+
         state = self.entity_description.get_native_value(self, key)
 
         if key == "weather_status":
-            self._attr_icon = WEATHER_STATES[state].get("icon")
-            return WEATHER_STATES[state].get("state")
+            weather_state = WEATHER_STATES.get(state)
+
+            if weather_state is None:
+                _LOGGER.error("Unknown weather state: %s", state)
+                return None
+
+            self._attr_icon = weather_state.get("icon")
+            return weather_state.get("state")
 
         if key == "boiler_status":
-            cstate = int(state) & 14
-            if BOILER_STATES[cstate] is None:
-                _LOGGER.error("Unknown Boiler State %s", cstate)
+            try:
+                boiler_state_code = int(state) & 14
+            except (ValueError, TypeError):
+                _LOGGER.error("Invalid boiler state: %s", state)
                 return None
-            self._attr_icon = BOILER_STATES[cstate].get("icon")
-            return BOILER_STATES[cstate].get("state")
+
+            boiler_state = BOILER_STATES.get(boiler_state_code)
+
+            if boiler_state is None:
+                _LOGGER.error("Unknown boiler state: %s", boiler_state_code)
+                return None
+
+            self._attr_icon = boiler_state.get("icon")
+            return boiler_state.get("state")
 
         if key == "charge_status":
             return "Charging" if state == 1 else "Idle"
 
         return state
-

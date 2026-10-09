@@ -34,7 +34,10 @@ from homeassistant.const import (
     UnitOfTemperature, 
     UnitOfTime,
     UnitOfPressure,
-    UnitOfInformation
+    UnitOfInformation,
+    UnitOfVolumeFlowRate,
+    UnitOfElectricPotential,
+    UnitOfRatio
 )
 
 DOMAIN = "atagone"
@@ -316,7 +319,7 @@ ATAG_SENSOR_ENTITIES = (
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.Details.REL_MOD_LEVEL}",
         translation_key=f"{ReportItems.Details.REL_MOD_LEVEL}",
-        native_unit_of_measurement="%",
+        native_unit_of_measurement=UnitOfRatio.PERCENTAGE,
         icon="mdi:fire",
         entity_registry_enabled_default=True,
         state_class=SensorStateClass.MEASUREMENT,
@@ -419,7 +422,7 @@ ATAG_SENSOR_ENTITIES = (
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.VOLTAGE}",
         translation_key=f"{ReportItems.VOLTAGE}",
-        native_unit_of_measurement="V",
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
         device_class=SensorDeviceClass.VOLTAGE,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
@@ -461,10 +464,10 @@ ATAG_SENSOR_ENTITIES = (
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.POWER_CONS}",
         translation_key=f"{ReportItems.POWER_CONS}",
+        native_unit_of_measurement=UnitOfVolumeFlowRate.CUBIC_METERS_PER_HOUR,
         device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
-        native_unit_of_measurement="m³/h",
         entity_registry_enabled_default=True,
         get_native_value=lambda entity, value: entity.coordinator.data.sensors.get(value, 0)
     ),

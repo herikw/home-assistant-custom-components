@@ -25,10 +25,16 @@
     }
   },
   "options": {
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "wrong_device": "The address belongs to a different Atag One thermostat"
+    },
     "step": {
       "init": {
         "title": "Configure Atag One Thermostat",
         "data": {
+          "host": "Host",
+          "port": "Port",
           "scan_interval": "Scan Interval (seconds)"
         }
       }

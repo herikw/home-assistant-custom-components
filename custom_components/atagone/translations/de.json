@@ -24,9 +24,15 @@
     }
   },
   "options": {
+    "error": {
+      "cannot_connect": "Verbindung zum Atag One Thermostat nicht möglich",
+      "wrong_device": "Die Adresse gehört zu einem anderen Atag One Thermostat"
+    },
     "step": {
       "init": {
         "data": {
+          "host": "Host",
+          "port": "Port",
           "scan_interval": "Scanintervall (Sekunden)"
         },
         "title": "Atag One konfigurieren"
