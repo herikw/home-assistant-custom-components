@@ -35,12 +35,21 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "scan_interval": "Scan Interval (seconds)"
+          "scan_interval": "Scan Interval (seconds)",
+          "power_cons_divisor": "Power consumption divisor"
+        },
+        "data_description": {
+          "power_cons_divisor": "Divides the reported power_cons value to calculate gas flow in m³/h. Default: 10000. A higher divisor lowers the reading; a lower divisor raises it. For example, 25000 / 10000 = 2.5 m³/h. Must be a positive integer."
         }
       }
     }
   },
   "entity": {
+    "sensor": {
+      "last_update_datetime": {
+        "name": "Last update datetime"
+      }
+    },
     "climate": {
       "atag_one": {
         "name": "Thermostat",

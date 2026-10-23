@@ -17,6 +17,7 @@ _LOGGER = logging.getLogger(__package__)
 from enum import StrEnum
 from collections.abc import Callable, Coroutine
 from .wrapper.atagoneapi import AtagOneApi
+from .wrapper.atagoneentity import DEFAULT_POWER_CONS_DIVISOR
 from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
@@ -47,6 +48,7 @@ DEFAULT_TIMEOUT = 30
 DEFAULT_MIN_TEMP = 4
 DEFAULT_MAX_TEMP = 27
 DEFAULT_PORT = 10000
+CONF_POWER_CONS_DIVISOR = "power_cons_divisor"
 
 DEFAULT_SCAN_INTERVAL_SECONDS: final = 60
 
@@ -280,6 +282,13 @@ class AtagOneSensorEntityDescription(SensorEntityDescription):
     get_native_value: Callable[[AtagOneApi], Coroutine] = None
     
 ATAG_SENSOR_ENTITIES = (
+    AtagOneSensorEntityDescription(
+        key="last_update_datetime",
+        translation_key="last_update_datetime",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_registry_enabled_default=True,
+        get_native_value=lambda entity, value: entity.coordinator.data.last_update_datetime,
+    ),
     AtagOneSensorEntityDescription(
         key=f"{ReportItems.BOILER_ERRORS}",
         translation_key=f"{ReportItems.BOILER_ERRORS}",

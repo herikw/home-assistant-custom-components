@@ -18,7 +18,13 @@ from homeassistant.const import (
     CONF_SCAN_INTERVAL
 )
 from .wrapper.atagoneapi import AtagOneApi
-from .const import DOMAIN, DEFAULT_PORT, DEFAULT_SCAN_INTERVAL_SECONDS
+from .const import (
+    DOMAIN,
+    DEFAULT_PORT,
+    DEFAULT_SCAN_INTERVAL_SECONDS,
+    CONF_POWER_CONS_DIVISOR,
+    DEFAULT_POWER_CONS_DIVISOR,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -171,6 +177,7 @@ class AtagOneOptionsFlow(OptionsFlowWithConfigEntry):
                         title="",
                         data={
                             CONF_SCAN_INTERVAL: user_input[CONF_SCAN_INTERVAL],
+                            CONF_POWER_CONS_DIVISOR: user_input[CONF_POWER_CONS_DIVISOR],
                         },
                     )
             except Exception as err:
@@ -203,6 +210,12 @@ class AtagOneOptionsFlow(OptionsFlowWithConfigEntry):
                         default=data.get(CONF_PORT, DEFAULT_PORT),
                     ): vol.Coerce(int),
                     vol.Optional(CONF_SCAN_INTERVAL, default=scan_interval): int,
+                    vol.Optional(
+                        CONF_POWER_CONS_DIVISOR,
+                        default=options.get(
+                            CONF_POWER_CONS_DIVISOR, DEFAULT_POWER_CONS_DIVISOR
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1)),
                 }
             ),
             errors=errors if errors else {},

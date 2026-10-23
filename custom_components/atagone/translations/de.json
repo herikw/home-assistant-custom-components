@@ -33,7 +33,11 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "scan_interval": "Scanintervall (Sekunden)"
+          "scan_interval": "Scanintervall (Sekunden)",
+          "power_cons_divisor": "Divisor für den Leistungsverbrauch"
+        },
+        "data_description": {
+          "power_cons_divisor": "Teilt den gemeldeten power_cons-Wert, um den Gasdurchfluss in m³/h zu berechnen. Standard: 10000. Ein höherer Divisor senkt den Messwert; ein niedrigerer erhöht ihn. Beispiel: 25000 / 10000 = 2,5 m³/h. Muss eine positive ganze Zahl sein."
         },
         "title": "Atag One konfigurieren"
       }
@@ -137,6 +141,9 @@
       }
     },
     "sensor": {
+      "last_update_datetime": {
+        "name": "Zeitpunkt der letzten Aktualisierung"
+      },
       "boiler_status": {
         "name": "Kesselstatus",
         "state": {

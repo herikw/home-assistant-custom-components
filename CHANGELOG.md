@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.16] - 2026-10-23
+
+### Added
+- Added a user-adjustable **Power consumption divisor** to the integration options, with a default of `10000` and positive integer validation. Saving the option reloads the integration and applies the divisor when converting the reported `power_cons` value to gas flow in m³/h.
+- Added help text explaining the conversion formula, default, and effect of changing the divisor, with a calculation example, in English, Dutch, French, and German.
+
+## [3.0.15] - 2026-10-15
+
+### Added
+- Added the `last_update_datetime` timestamp sensor for use in integration like VTherm. It updates after every successful thermostat poll, even when readings stay unchanged, and retains its timestamp when a poll fails.
+- Added sensor names in English, Dutch, French, and German.
+
+### Fixed
+- Treat polls that return no data as failed coordinator updates.
+
 ## [3.0.14] - 2026-07-17
 
 ### Added

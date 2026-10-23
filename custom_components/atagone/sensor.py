@@ -152,7 +152,7 @@ class AtagOneSensor(AtagOneEntity, RestoreSensor, SensorEntity):
         self.async_write_ha_state()
 
     @property
-    def native_value(self) -> StateType:
+    def native_value(self) -> StateType | datetime:
         """Return the sensor state."""
         key = self.entity_description.key
 

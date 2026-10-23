@@ -36,7 +36,12 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .const import DOMAIN, DEFAULT_SCAN_INTERVAL_SECONDS
+from .const import (
+    DOMAIN,
+    DEFAULT_SCAN_INTERVAL_SECONDS,
+    CONF_POWER_CONS_DIVISOR,
+    DEFAULT_POWER_CONS_DIVISOR,
+)
 from .wrapper.atagoneapi import AtagOneApi
 
 _LOGGER = logging.getLogger(__name__)
@@ -87,13 +92,17 @@ async def async_setup_entry(
     atagapi = AtagOneApi(
         entry.data[CONF_HOST],
         entry.data[CONF_PORT],
+        power_cons_divisor=entry.options.get(
+            CONF_POWER_CONS_DIVISOR, DEFAULT_POWER_CONS_DIVISOR
+        ),
     )
 
     async def _async_update_data() -> AtagOneApi:
         """Fetch the latest data from the ATAG One."""
         try:
             async with timeout(20):
-                await atagapi.async_update()
+                if not await atagapi.async_update():
+                    raise UpdateFailed("No data received from ATAG One")
         except TimeoutError as err:
             raise UpdateFailed(
                 "Timeout while communicating with ATAG One"

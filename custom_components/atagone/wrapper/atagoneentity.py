@@ -6,11 +6,15 @@ from urllib.parse import urlparse
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_POWER_CONS_DIVISOR = 10000
+
 ATAG_EPOCH = datetime(2000, 1, 1)
 
 
 class AtagOneEntity(object):
     """Base entity for the Atag ONE API wrappers."""
+
+    power_cons_divisor: int = DEFAULT_POWER_CONS_DIVISOR
 
     def __init__(self):
         self.data: Optional[Dict[str, Any]] = None
@@ -144,7 +148,7 @@ class AtagOneEntity(object):
             return 0
 
         if power_cons > 0:
-            return power_cons / 100000
+            return power_cons / self.power_cons_divisor
         return 0
     
     @property

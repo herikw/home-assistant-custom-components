@@ -33,7 +33,11 @@
         "data": {
           "host": "Hôte",
           "port": "Port",
-          "scan_interval": "Intervalle de balayage (secondes)"
+          "scan_interval": "Intervalle de balayage (secondes)",
+          "power_cons_divisor": "Diviseur de consommation de puissance"
+        },
+        "data_description": {
+          "power_cons_divisor": "Divise la valeur power_cons rapportée pour calculer le débit de gaz en m³/h. Valeur par défaut : 10000. Un diviseur plus élevé diminue la mesure ; un diviseur plus faible l’augmente. Exemple : 25000 / 10000 = 2,5 m³/h. Doit être un entier positif."
         },
         "title": "Configurer Atag One"
       }
@@ -137,6 +141,9 @@
       }
     },
     "sensor": {
+      "last_update_datetime": {
+        "name": "Date et heure de la dernière mise à jour"
+      },
       "boiler_status": {
         "name": "État de la chaudière",
         "state": {

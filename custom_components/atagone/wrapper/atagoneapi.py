@@ -5,14 +5,14 @@ Author: herikw
 https://github.com/herikw/home-assistant-custom-components
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 import aiohttp
 import asyncio
 import atexit
 import logging
 from http import HTTPStatus
-from .atagoneentity import AtagOneEntity
+from .atagoneentity import AtagOneEntity, DEFAULT_POWER_CONS_DIVISOR
 
 from socket import AF_INET, SOCK_DGRAM, SO_REUSEADDR, SOL_SOCKET, socket, timeout
 
@@ -54,8 +54,17 @@ class AtagDiscovery(asyncio.DatagramProtocol):
 class AtagOneApi(AtagOneEntity):
     """Wrapper class to the Atag One Local API"""
 
-    def __init__(self, host: Optional[str] = None, port: Optional[int] = 10000):
+    def __init__(
+        self,
+        host: Optional[str] = None,
+        port: Optional[int] = 10000,
+        power_cons_divisor: int = DEFAULT_POWER_CONS_DIVISOR,
+    ):
+        if power_cons_divisor <= 0:
+            raise ValueError("Power consumption divisor must be positive")
+        self.power_cons_divisor = power_cons_divisor
         self.data = None
+        self.last_update_datetime: datetime | None = None
         self.paired = False
         self.heating = False
         self.port = port
@@ -194,6 +203,7 @@ class AtagOneApi(AtagOneEntity):
         status = boiler_status & 14
         self.heating = status == 10
 
+        self.last_update_datetime = datetime.now(timezone.utc)
         return True
     
     async def _async_send_request(self, request_path: str, json_payload: str, max_attempts: int = 3) -> Optional[Dict[str, Any]]:

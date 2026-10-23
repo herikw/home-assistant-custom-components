@@ -33,7 +33,11 @@
         "data": {
           "host": "Host",
           "port": "Port",
-          "scan_interval": "Scan Interval (seconden)"
+          "scan_interval": "Scan Interval (seconden)",
+          "power_cons_divisor": "Deler voor vermogensverbruik"
+        },
+        "data_description": {
+          "power_cons_divisor": "Deelt de gerapporteerde power_cons-waarde om het gasdebiet in m³/h te berekenen. Standaard: 10000. Een hogere deler verlaagt de meetwaarde; een lagere deler verhoogt deze. Bijvoorbeeld: 25000 / 10000 = 2,5 m³/h. Moet een positief geheel getal zijn."
         },
         "title": "Configureer Atag One"
       }
@@ -137,6 +141,9 @@
       }
     },
     "sensor": {
+      "last_update_datetime": {
+        "name": "Laatste update datum en tijd"
+      },
       "boiler_status": {
         "name": "Boiler Status",
         "state": {

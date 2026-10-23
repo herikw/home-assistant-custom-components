@@ -41,6 +41,8 @@ In the next step select the Area you want to use for this component
 ### Scan Interval
 
 There is now also an option to specify the scan interval. Sometimes it's needed to change this because the Atag One Thermostat seems to become overloaden when scanning too frequently.
+
+The integration options also include **Power consumption divisor** (default: `10000`). Set a positive integer to adjust the conversion of the reported `power_cons` value to m³/h: gas flow = reported value / divisor. Saving the options reloads the integration.
 Choose at least a value of 30 or higher.
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/scaninterval.png?raw=true "Screenshot")
@@ -63,6 +65,13 @@ All other sensors are now on the Diagnostics Card.
 
 It's no longer needed to configure the sensors in configuration.yaml
 Sensors can be added or removed by removing or adding the required entry(s) in the UI
+
+The `last_update_datetime` sensor reports the time of the last successful poll of
+the thermostat. It updates at the configured scan interval, even when the measured
+values stay the same, and retains its timestamp when a poll fails. After reloading
+the integration, select the **Last update datetime** sensor in VTherm where a last
+update timestamp entity is needed. Home Assistant assigns its entity ID based on
+the device name; you can find it in the ATAG One device's entities.
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/disable-sensor.png?raw=true "Screenshot")
 
