@@ -66,12 +66,20 @@ All other sensors are now on the Diagnostics Card.
 It's no longer needed to configure the sensors in configuration.yaml
 Sensors can be added or removed by removing or adding the required entry(s) in the UI
 
-The `last_update_datetime` sensor reports the time of the last successful poll of
-the thermostat. It updates at the configured scan interval, even when the measured
-values stay the same, and retains its timestamp when a poll fails. After reloading
-the integration, select the **Last update datetime** sensor in VTherm where a last
-update timestamp entity is needed. Home Assistant assigns its entity ID based on
-the device name; you can find it in the ATAG One device's entities.
+The optional `last_update_datetime` sensor is disabled by default. It is intended
+for integrations such as VTherm that need the time of the last successful poll.
+When enabled, it updates at the configured scan interval, even when measured values
+stay the same, and retains its timestamp when a poll fails. These frequent updates
+can fill Home Assistant's Activity history.
+
+To enable it for VTherm, go to **Settings → Devices & services → Entities**, show
+disabled entities in the filters, and open the ATAG One **Last update datetime**
+sensor. Enable the entity, then select it in VTherm where a last update timestamp
+entity is needed. Home Assistant assigns its entity ID based on the device name.
+
+Existing installations keep their current enabled or disabled setting after an
+upgrade. If you do not use this sensor, open it under **Settings → Devices &
+services → Entities** and disable it to stop further updates and Activity entries.
 
 ![alt tag](https://github.com/herikw/home-assistant-custom-components/blob/master/screenshots/disable-sensor.png?raw=true "Screenshot")
 

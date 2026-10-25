@@ -286,7 +286,7 @@ ATAG_SENSOR_ENTITIES = (
         key="last_update_datetime",
         translation_key="last_update_datetime",
         device_class=SensorDeviceClass.TIMESTAMP,
-        entity_registry_enabled_default=True,
+        entity_registry_enabled_default=False,
         get_native_value=lambda entity, value: entity.coordinator.data.last_update_datetime,
     ),
     AtagOneSensorEntityDescription(

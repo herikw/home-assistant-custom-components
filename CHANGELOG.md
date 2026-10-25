@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.17] - 2026-10-25
+
+### Changed
+- Disabled the optional `last_update_datetime` sensor by default for new installations to avoid frequent Activity entries. Existing installations retain their entity setting.
+- Documented how to enable the timestamp sensor for VTherm and how existing users can disable it when it is not needed.
+
 ## [3.0.16] - 2026-10-23
 
 ### Added
